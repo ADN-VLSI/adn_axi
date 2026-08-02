@@ -1,19 +1,22 @@
-name: Add Issue to ADN-VLSI Project
+- name: Add issue to project
+  env:
+    GH_TOKEN: ${{ secrets.ADN_SECRET_FOEZ_PAT }}
+  run: |
+    PROJECT_ID=$(gh api graphql -f query='
+    {
+      organization(login:"ADN-VLSI") {
+        projectV2(number:2) {
+          id
+        }
+      }
+    }' --jq '.data.organization.projectV2.id')
 
-on:
-  issues:
-    types: [opened]
-
-jobs:
-  add-to-project:
-    runs-on: ubuntu-latest
-
-    permissions:
-      issues: write
-
-    steps:
-      - name: Add issue to organization project
-        env:
-          GH_TOKEN: ${{ secrets.ADN_SECRET_FOEZ_PAT }}
-        run: |
-          gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-project "projects"
+    gh api graphql -f query='
+      mutation($project:ID!, $content:ID!) {
+        addProjectV2ItemById(input:{
+          projectId:$project,
+          contentId:$content
+        }) {
+          item { id }
+        }
+      }' -f project="$PROJECT_ID" -f content="${{ github.event.issue.node_id }}"
