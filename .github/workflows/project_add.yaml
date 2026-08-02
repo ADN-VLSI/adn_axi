@@ -1,0 +1,19 @@
+name: Add Issue to ADN-VLSI Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Add issue to organization project
+        env:
+          GH_TOKEN: ${{ secrets.ADN_SECRET_FOEZ_PAT }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} --repo ${{ github.repository }} --add-project "projects"
