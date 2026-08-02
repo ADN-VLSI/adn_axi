@@ -1,7 +1,7 @@
 HAS_SUBMODULES = 1
 
-export ADN_ENDEC=$(CURDIR)
-export REPO_NAME_EXP=ADN_ENDEC
+export ADN_AXI=$(CURDIR)
+export REPO_NAME_EXP=ADN_AXI
 
 export ADN_COMMON=$(REPO_ROOT)/submodule/adn_common
 
