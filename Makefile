@@ -186,7 +186,7 @@ update_doc_list:
 	@cat readme_base.md > readme.md
 	@echo "" >> readme.md
 	@echo "## RTL" >> readme.md
-	@$(foreach file, $(shell find $(SOURCE_DOC_DIR) -name "*.md"), make -s get_source_doc_header FILE=$(file);)
+	@$(foreach file, $(shell find $(SOURCE_DOC_DIR) -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
 
 .PHONY: create_all_docs
