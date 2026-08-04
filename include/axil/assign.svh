@@ -16,37 +16,52 @@ See LICENSE file in the project root for full license information
 
 */
 
-`ifndef __GUARD_AXI_ASSIGN_SVH__
-`define __GUARD_AXI_ASSIGN_SVH__ 0
+`ifndef __GUARD_AXIL_ASSIGN_SVH__
+`define __GUARD_AXIL_ASSIGN_SVH__ 0
 
 
 // @foez-bhai, add comments here about the purpose and usecase of this macro
-`define APB_COMMUNICATION(__M__, __S__, __MT__, __AS__)               \
-  ``__MT__`` ``__S__``.psel    ``__AS__`` {'0, ``__M__``.psel};       \
-  ``__MT__`` ``__S__``.penable ``__AS__`` {'0, ``__M__``.penable};    \
-  ``__MT__`` ``__S__``.paddr   ``__AS__`` {'0, ``__M__``.paddr};      \
-  ``__MT__`` ``__S__``.pprot   ``__AS__`` {'0, ``__M__``.pprot};      \
-  ``__MT__`` ``__S__``.pwrite  ``__AS__`` {'0, ``__M__``.pwrite};     \
-  ``__MT__`` ``__S__``.pwdata  ``__AS__`` {'0, ``__M__``.pwdata};     \
-  ``__MT__`` ``__S__``.pstrb   ``__AS__`` {'0, ``__M__``.pstrb};      \
-  ``__MT__`` ``__M__``.pready  ``__AS__`` {'0, ``__S__``.pready};     \
-  ``__MT__`` ``__M__``.prdata  ``__AS__`` {'0, ``__S__``.prdata};     \
-  ``__MT__`` ``__M__``.pslverr ``__AS__`` {'0, ``__S__``.pslverr};    \
+`define AXIL_COMMUNICATION(__M__, __S__, __MT__, __AS__)                    \
+                                                                            \
+  ``__MT__`` ``__S__``.aw.addr    ``__AS__`` {'0, ``__M__``.aw.addr};       \
+  ``__MT__`` ``__S__``.aw.prot    ``__AS__`` {'0, ``__M__``.aw.prot};       \
+  ``__MT__`` ``__S__``.aw_valid   ``__AS__`` {'0, ``__M__``.aw_valid};      \
+  ``__MT__`` ``__M__``.aw_ready   ``__AS__`` {'0, ``__S__``.aw_ready};      \
+                                                                            \
+  ``__MT__`` ``__S__``.w.data     ``__AS__`` {'0, ``__M__``.w.data};        \
+  ``__MT__`` ``__S__``.w.strb     ``__AS__`` {'0, ``__M__``.w.strb};        \
+  ``__MT__`` ``__S__``.w_valid    ``__AS__`` {'0, ``__M__``.w_valid};       \
+  ``__MT__`` ``__M__``.w_ready    ``__AS__`` {'0, ``__S__``.w_ready};       \
+                                                                            \
+  ``__MT__`` ``__M__``.b.resp     ``__AS__`` {'0, ``__S__``.b.resp};        \
+  ``__MT__`` ``__M__``.b_valid    ``__AS__`` {'0, ``__S__``.b_valid};       \
+  ``__MT__`` ``__S__``.b_ready    ``__AS__`` {'0, ``__M__``.b_ready};       \
+                                                                            \
+  ``__MT__`` ``__S__``.ar.addr    ``__AS__`` {'0, ``__M__``.ar.addr};       \
+  ``__MT__`` ``__S__``.ar.prot    ``__AS__`` {'0, ``__M__``.ar.prot};       \
+  ``__MT__`` ``__S__``.ar_valid   ``__AS__`` {'0, ``__M__``.ar_valid};      \
+  ``__MT__`` ``__M__``.ar_ready   ``__AS__`` {'0, ``__S__``.ar_ready};      \
+                                                                            \
+  ``__MT__`` ``__M__``.r.data     ``__AS__`` {'0, ``__S__``.r.data};        \
+  ``__MT__`` ``__M__``.r.resp     ``__AS__`` {'0, ``__S__``.r.resp};        \
+  ``__MT__`` ``__M__``.r_valid    ``__AS__`` {'0, ``__S__``.r_valid};       \
+  ``__MT__`` ``__S__``.r_ready    ``__AS__`` {'0, ``__M__``.r_ready};       \
+  
 
 
 // @foez-bhai, add comments here about the purpose and usecase of this macro
-`define APB_COMB_ASSIGN(__M__, __S__)                                 \
-  `APB_COMMUNICATION(``__M__``, ``__S__``, always_comb, =)            \
+`define AXIL_COMB_ASSIGN(__M__, __S__)                                  \
+  `AXIL_COMMUNICATION(``__M__``, ``__S__``, always_comb, =)             \
 
 
 // @foez-bhai, add comments here about the purpose and usecase of this macro
-`define APB_BLOCKING_ASSIGN(__M__, __S__)                             \
-  `APB_COMMUNICATION(``__M__``, ``__S__``, , =)                       \
+`define AXIL_BLOCKING_ASSIGN(__M__, __S__)                              \
+  `AXIL_COMMUNICATION(``__M__``, ``__S__``, , =)                        \
 
 
 // @foez-bhai, add comments here about the purpose and usecase of this macro
-`define APB_NONBLOCKING_ASSIGN(__M__, __S__)                          \
-  `APB_COMMUNICATION(``__M__``, ``__S__``, , <=)                      \
+`define AXIL_NONBLOCKING_ASSIGN(__M__, __S__)                           \
+  `AXIL_COMMUNICATION(``__M__``, ``__S__``, , <=)                       \
 
 
 `endif

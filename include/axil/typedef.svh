@@ -55,8 +55,8 @@ See LICENSE file in the project root for full license information
 // @foez-bhai, add comments here about the purpose and usecase of this macro
 `define AXIL_R_T(__NM__, __DW__)                                           \
   typedef struct packed {                                                  \
-    logic [           1:0] resp;                                           \
     logic [``__DW__``-1:0] data;                                           \
+    logic [           1:0] resp;                                           \
   } ``__NM__``_r_t;                                                        \
 
 
