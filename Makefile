@@ -1,5 +1,7 @@
 export SHELL=/bin/bash
 
+.DEFAULT_GOAL := help
+
 include ext.mk
 
 ####################################################################################################
@@ -14,7 +16,6 @@ BUILD_DIR := $(REPO_ROOT)/build
 LOG_DIR := $(REPO_ROOT)/log
 COVERAGE_DIR := $(REPO_ROOT)/coverage
 DOCUMENTER := $(REPO_ROOT)/submodule/documenter
-SOURCE_DOC_DIR := $(REPO_ROOT)/document/source
 
 TN    := default
 TC    := 1
@@ -46,6 +47,27 @@ LINE_4 := See LICENSE file in the project root for full license information
 ####################################################################################################
 # VIVADO
 ####################################################################################################
+
+.PHONY: help
+help:
+	@echo ""
+	@echo -e "Usage: make [\033[1;36mtarget\033[0m] [\033[1;35mVARIABLE=value\033[0m]"
+	@echo -e "\n\033[0;36mTARGETS\033[0m"
+	@echo -e "\033[0;36m|          help\033[0m : Show this help message"
+	@echo -e "\033[0;36m|         clean\033[0m : Clean build directory"
+	@echo -e "\033[0;36m|    clean_full\033[0m : Clean build, log and coverage directories"
+	@echo -e "\033[0;36m|      simulate\033[0m : Compile and simulate the design"
+	@echo -e "\033[0;36m|    regression\033[0m : Run regression tests"
+	@echo -e "\033[0;36m|    gen_source\033[0m : Generate a new source file template"
+	@echo -e "\033[0;36m| gen_testbench\033[0m : Generate a new testbench file template"
+	@echo -e "\n\033[0;35mVARIABLES\033[0m"
+	@echo -e "\033[0;35m|    TOP\033[0m : Specify the top-level module for simulation (default: $(TOP))"
+	@echo -e "\033[0;35m|     TN\033[0m : Specify the test name for simulation (default: $(TN))"
+	@echo -e "\033[0;35m|     TC\033[0m : Specify the test count for simulation (default: $(TC))"
+	@echo -e "\033[0;35m|    GUI\033[0m : Specify whether to run simulation in GUI mode (0 or 1, default: $(GUI))"
+	@echo -e "\033[0;35m|    VCD\033[0m : Specify whether to generate VCD waveform file (0 or 1, default: $(VCD))"
+	@echo -e "\033[0;35m|  DEBUG\033[0m : Specify whether to enable debug mode (0 or 1, default: $(DEBUG))"
+	@echo ""
 
 $(BUILD_DIR) $(LOG_DIR) $(COVERAGE_DIR):
 	@echo -e "\033[1;33m#\033[0m Creating directory $@"
@@ -185,20 +207,33 @@ update_doc_list:
 	@make -s create_all_docs
 	@cat readme_base.md > readme.md
 	@echo "" >> readme.md
-	@echo "## RTL" >> readme.md
-	@$(foreach file, $(shell find $(SOURCE_DOC_DIR) -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@echo "## DESIGN SOURCE" >> readme.md
+	@$(foreach file, $(shell find $(REPO_ROOT)/document/source -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@echo "" >> readme.md
+	@echo "## INTERFACE" >> readme.md
+	@$(foreach file, $(shell find $(REPO_ROOT)/document/interface -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@echo "" >> readme.md
+	@echo "## INCLUDE" >> readme.md
+	@$(foreach file, $(shell find $(REPO_ROOT)/document/include -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
 
 .PHONY: create_all_docs
 create_all_docs:
 	@make -s clean_all_docs
-	@$(foreach file, $(shell find $(REPO_ROOT)/source/ -type f -name "*.sv"), make -s gen_doc FILE=$(file);)
+	@$(foreach file, $(shell find $(REPO_ROOT)/include/ -type f -name "*.*v*"), make -s gen_doc FILE=$(file) FOLDER=include;)
+	@$(foreach file, $(shell find $(REPO_ROOT)/interface/ -type f -name "*.sv"), make -s gen_doc FILE=$(file) FOLDER=interface;)
+	@$(foreach file, $(shell find $(REPO_ROOT)/source/ -type f -name "*.sv"), make -s gen_doc FILE=$(file) FOLDER=source;)
 
 .PHONY: clean_all_docs
 clean_all_docs:
-	@mkdir -p $(SOURCE_DOC_DIR)
-	@rm -f $(SOURCE_DOC_DIR)/*.md
-	@rm -f $(SOURCE_DOC_DIR)/*_top.svg
+	@mkdir -p $(REPO_ROOT)/document/include
+	@mkdir -p $(REPO_ROOT)/document/interface
+	@mkdir -p $(REPO_ROOT)/document/source
+	@rm -f $(REPO_ROOT)/document/include/*.md
+	@rm -f $(REPO_ROOT)/document/interface/*.md
+	@rm -f $(REPO_ROOT)/document/interface/*_top.svg
+	@rm -f $(REPO_ROOT)/document/source/*.md
+	@rm -f $(REPO_ROOT)/document/source/*_top.svg
 
 .PHONY: get_source_doc_header
 get_source_doc_header:
@@ -210,11 +245,18 @@ get_source_doc_header:
 .PHONY: gen_doc
 gen_doc:
 	@echo "Creating document for $(FILE)"
-	@$(PYTHON) $(DOCUMENTER)/sv_documenter.py $(FILE) $(SOURCE_DOC_DIR)
-	@sed -i "s|.*${LINE_1}.*|<br>**${LINE_1}**|g" $(SOURCE_DOC_DIR)/$(shell basename $(FILE) | sed "s/\.sv/\.md/g")
-	@sed -i "s|.*${LINE_2}.*|<br>**${LINE_2}**|g" $(SOURCE_DOC_DIR)/$(shell basename $(FILE) | sed "s/\.sv/\.md/g")
-	@sed -i "s|.*${LINE_3}.*|<br>**${LINE_3}**|g" $(SOURCE_DOC_DIR)/$(shell basename $(FILE) | sed "s/\.sv/\.md/g")
-	@sed -i "s|.*${LINE_4}.*|<br>**${LINE_4}**|g" $(SOURCE_DOC_DIR)/$(shell basename $(FILE) | sed "s/\.sv/\.md/g")
+	@$(eval OUTPUT_DIR := $(shell dirname $(FILE) | sed 's|$(REPO_ROOT)/$(FOLDER)|$(REPO_ROOT)/document/$(FOLDER)|g'))
+	@$(eval OUTPUT_FILE := $(shell basename $(FILE) | sed "s/\..*/\.md/g"))
+	@$(eval REMAINING_PATH := $(shell echo $(FILE) | sed "s|$(REPO_ROOT)/$(FOLDER)/||g"))
+	@mkdir -p $(OUTPUT_DIR)
+	@$(PYTHON) $(DOCUMENTER)/sv_documenter.py $(FILE) $(OUTPUT_DIR)
+	@sed -i "s|.*${LINE_1}.*|<br>**${LINE_1}**|g" $(OUTPUT_DIR)/$(OUTPUT_FILE)
+	@sed -i "s|.*${LINE_2}.*|<br>**${LINE_2}**|g" $(OUTPUT_DIR)/$(OUTPUT_FILE)
+	@sed -i "s|.*${LINE_3}.*|<br>**${LINE_3}**|g" $(OUTPUT_DIR)/$(OUTPUT_FILE)
+	@sed -i "s|.*${LINE_4}.*|<br>**${LINE_4}**|g" $(OUTPUT_DIR)/$(OUTPUT_FILE)
+ifeq ($(FOLDER), include)
+	@sed -E -i "s|^# \w*|# $(REMAINING_PATH) |g" $(OUTPUT_DIR)/$(OUTPUT_FILE)
+endif
 
 ####################################################################################################
 # TESTBENCH & SOURCE GENERATION
