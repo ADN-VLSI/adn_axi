@@ -1,8 +1,10 @@
 /*
 
-@foez-bhai, write the purpose of this file in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+# Purpose
+This file provides a set of SystemVerilog macros designed to streamline the assignment of AXI4-Lite interface signals between a master and a slave. It abstracts the repetitive task of connecting individual AXI4-Lite channels (Write Address, Write Data, Write Response, Read Address, and Read Data) by providing unified macros for combinational, blocking, and non-blocking assignments.
 
-@foez-bhai, describe the use case of this file in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Use Case
+This file is primarily used in testbenches or verification environments where an AXI4-Lite Master interface needs to be connected to a Slave interface. By using these macros, developers can avoid writing dozens of individual signal assignments, reducing boilerplate code and minimizing the risk of connection errors. It supports various assignment types (combinational, blocking, and non-blocking), making it versatile for both RTL-level connectivity and simulation-based stimulus generation.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
@@ -20,7 +22,8 @@ See LICENSE file in the project root for full license information
 `define __GUARD_AXIL_ASSIGN_SVH__ 0
 
 
-// @foez-bhai, add comments here about the purpose and usecase of this macro
+// @brief: Connects AXI4-Lite Master and Slave interfaces.
+// @usecase: Used internally by assignment macros to map signals across all 5 AXI channels.
 `define AXIL_COMMUNICATION(__M__, __S__, __MT__, __AS__)                    \
                                                                             \
   ``__MT__`` ``__S__``.aw.addr    ``__AS__`` {'0, ``__M__``.aw.addr};       \
@@ -46,20 +49,14 @@ See LICENSE file in the project root for full license information
   ``__MT__`` ``__M__``.r.resp     ``__AS__`` {'0, ``__S__``.r.resp};        \
   ``__MT__`` ``__M__``.r_valid    ``__AS__`` {'0, ``__S__``.r_valid};       \
   ``__MT__`` ``__S__``.r_ready    ``__AS__`` {'0, ``__M__``.r_ready};       \
-  
-
-
-// @foez-bhai, add comments here about the purpose and usecase of this macro
 `define AXIL_COMB_ASSIGN(__M__, __S__)                                  \
   `AXIL_COMMUNICATION(``__M__``, ``__S__``, always_comb, =)             \
 
 
-// @foez-bhai, add comments here about the purpose and usecase of this macro
+// @brief: Performs a blocking assignment (=) between AXI4-Lite interfaces.
+// @usecase: Used in procedural blocks (initial/always) for sequential logic or testbench stimulus.
 `define AXIL_BLOCKING_ASSIGN(__M__, __S__)                              \
   `AXIL_COMMUNICATION(``__M__``, ``__S__``, , =)                        \
-
-
-// @foez-bhai, add comments here about the purpose and usecase of this macro
 `define AXIL_NONBLOCKING_ASSIGN(__M__, __S__)                           \
   `AXIL_COMMUNICATION(``__M__``, ``__S__``, , <=)                       \
 

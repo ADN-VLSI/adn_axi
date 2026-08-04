@@ -1,8 +1,14 @@
 /*
 
-@foez-bhai, write the purpose of this file in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Purpose
+This file provides a set of SystemVerilog macros designed to simplify the assignment and connection of AXI4 interface signals between Master and Slave components. It abstracts the repetitive task of mapping individual AXI channel signals (AW, W, B, AR, R) by providing unified macros for combinatorial, blocking, and non-blocking assignments.
 
-@foez-bhai, describe the use case of this file in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Use Case
+This file is primarily used in SystemVerilog testbenches or RTL integration layers where AXI4 interfaces need to be connected between a Master and a Slave. Instead of manually mapping every signal in the five AXI channels (AW, W, B, AR, R), developers can use these macros to perform bulk assignments. 
+
+- **`AXI_COMB_ASSIGN`**: Used within `always_comb` blocks for combinatorial signal propagation.
+- **`AXI_BLOCKING_ASSIGN`**: Used for sequential blocking assignments.
+- **`AXI_NONBLOCKING_ASSIGN`**: Used for sequential non-blocking assignments (e.g., within `always_ff` blocks).
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
@@ -20,7 +26,13 @@ See LICENSE file in the project root for full license information
 `define __GUARD_AXI_ASSIGN_SVH__ 0
 
 
-// @foez-bhai, add comments here about the purpose and usecase of this macro
+/* 
+ * @brief Performs bulk signal assignment between AXI Master and Slave interfaces.
+ * @param __M__  Master interface instance.
+ * @param __S__  Slave interface instance.
+ * @param __MT__ Macro type/block context (e.g., always_comb).
+ * @param __AS__ Assignment operator (e.g., =, <=).
+ */
 `define AXI_COMMUNICATION(__M__, __S__, __MT__, __AS__)                     \
                                                                             \
   ``__MT__`` ``__S__``.aw.id      ``__AS__`` {'0, ``__M__``.aw.id};         \
@@ -71,20 +83,16 @@ See LICENSE file in the project root for full license information
   ``__MT__`` ``__M__``.r.user     ``__AS__`` {'0, ``__S__``.r.user};        \
   ``__MT__`` ``__M__``.r_valid    ``__AS__`` {'0, ``__S__``.r_valid};       \
   ``__MT__`` ``__S__``.r_ready    ``__AS__`` {'0, ``__M__``.r_ready};       \
-  
-
-
-// @foez-bhai, add comments here about the purpose and usecase of this macro
 `define AXI_COMB_ASSIGN(__M__, __S__)                                  \
   `AXI_COMMUNICATION(``__M__``, ``__S__``, always_comb, =)             \
 
 
-// @foez-bhai, add comments here about the purpose and usecase of this macro
+/**
+ * @brief Performs a blocking assignment for AXI signals.
+ * @usecase Use this within procedural blocks (initial/always) for immediate, blocking signal updates.
+ */
 `define AXI_BLOCKING_ASSIGN(__M__, __S__)                              \
   `AXI_COMMUNICATION(``__M__``, ``__S__``, , =)                        \
-
-
-// @foez-bhai, add comments here about the purpose and usecase of this macro
 `define AXI_NONBLOCKING_ASSIGN(__M__, __S__)                           \
   `AXI_COMMUNICATION(``__M__``, ``__S__``, , <=)                       \
 
