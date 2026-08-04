@@ -12,7 +12,7 @@ This file is intended to be included in SystemVerilog design modules that requir
 
 Author : Foez Ahmed (foez.official@gmail.com)
 This file is part of ADN-VLSI/adn_axi
-Copyright (c) __YEAR__ ADN-VLSI
+Copyright (c) 2026 ADN-VLSI
 Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
@@ -20,6 +20,7 @@ See LICENSE file in the project root for full license information
 
 `ifndef __GUARD_AXIL_TYPEDEF_SVH__
 `define __GUARD_AXIL_TYPEDEF_SVH__ 0
+
 
 // Macro: AXIL_AX_T
 // Purpose: Defines a generic AXI4-Lite address channel structure.
@@ -29,6 +30,11 @@ See LICENSE file in the project root for full license information
     logic [  ``__AW__``-1:0] addr;                                         \
     logic [             2:0] prot;                                         \
   } ``__NM__``_a``__TP__``_t;                                              \
+
+
+// Macro: AXIL_AW_T
+// Purpose: Defines the AXI4-Lite Write Address channel structure.
+// Use Case: Instantiates the generic address channel macro specifically for write operations.
 `define AXIL_AW_T(__NM__, __AW__)                                          \
   `AXIL_AX_T(``__NM__``, ``__AW__``, w)                                    \
 
@@ -41,6 +47,11 @@ See LICENSE file in the project root for full license information
     logic [  ``__DW__``-1:0] data;                                         \
     logic [``__DW__``/8-1:0] strb;                                         \
   } ``__NM__``_w_t;                                                        \
+
+
+// Macro: AXIL_B_T
+// Purpose: Defines the AXI4-Lite Write Response channel structure.
+// Use Case: Used to encapsulate the response signals for write operations.
 `define AXIL_B_T(__NM__)                                                   \
   typedef struct packed {                                                  \
     logic [           1:0] resp;                                           \
@@ -52,12 +63,16 @@ See LICENSE file in the project root for full license information
 // Use Case: Instantiates the generic address channel macro specifically for read operations.
 `define AXIL_AR_T(__NM__, __AW__)                                          \
   `AXIL_AX_T(``__NM__``, ``__AW__``, r)                                    \
+
+
+// Macro: AXIL_R_T
+// Purpose: Defines the AXI4-Lite Read Data channel structure.
+// Use Case: Used to encapsulate data and response signals for read operations.
 `define AXIL_R_T(__NM__, __DW__)                                           \
   typedef struct packed {                                                  \
     logic [``__DW__``-1:0] data;                                           \
     logic [           1:0] resp;                                           \
   } ``__NM__``_r_t;                                                        \
-
 
 
 // Macro: AXIL_REQ_T
@@ -78,6 +93,11 @@ See LICENSE file in the project root for full license information
     logic            ar_valid;                   \
     logic            r_ready;                    \
   } ``__NM__``_req_t;                            \
+
+
+// Macro: AXIL_RESP_T
+// Purpose: Aggregates all AXI4-Lite response-side channels (B, R) into a single packed struct.
+// Use Case: Simplifies interface port declarations by bundling all response signals into one structure.
 `define AXIL_RESP_T(__NM__, __DW__)              \
   `AXIL_B_T(``__NM__``)                          \
   `AXIL_R_T(``__NM__``, ``__DW__``)              \

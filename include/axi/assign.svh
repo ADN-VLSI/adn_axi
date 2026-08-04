@@ -16,7 +16,7 @@ This file is primarily used in SystemVerilog testbenches or RTL integration laye
 
 Author : Foez Ahmed (foez.official@gmail.com)
 This file is part of ADN-VLSI/adn_axi
-Copyright (c) __YEAR__ ADN-VLSI
+Copyright (c) 2026 ADN-VLSI
 Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
@@ -27,11 +27,11 @@ See LICENSE file in the project root for full license information
 
 
 /* 
- * @brief Performs bulk signal assignment between AXI Master and Slave interfaces.
- * @param __M__  Master interface instance.
- * @param __S__  Slave interface instance.
- * @param __MT__ Macro type/block context (e.g., always_comb).
- * @param __AS__ Assignment operator (e.g., =, <=).
+  @brief Performs bulk signal assignment between AXI Master and Slave interfaces.
+  @param __M__  Master interface instance.
+  @param __S__  Slave interface instance.
+  @param __MT__ Macro type/block context (e.g., always_comb).
+  @param __AS__ Assignment operator (e.g., =, <=).
  */
 `define AXI_COMMUNICATION(__M__, __S__, __MT__, __AS__)                     \
                                                                             \
@@ -83,16 +83,28 @@ See LICENSE file in the project root for full license information
   ``__MT__`` ``__M__``.r.user     ``__AS__`` {'0, ``__S__``.r.user};        \
   ``__MT__`` ``__M__``.r_valid    ``__AS__`` {'0, ``__S__``.r_valid};       \
   ``__MT__`` ``__S__``.r_ready    ``__AS__`` {'0, ``__M__``.r_ready};       \
+
+
+/*
+  @brief Performs a combinatorial assignment for AXI signals.
+  @usecase Use this within `always_comb` blocks for immediate, combinatorial signal updates.
+*/
 `define AXI_COMB_ASSIGN(__M__, __S__)                                  \
   `AXI_COMMUNICATION(``__M__``, ``__S__``, always_comb, =)             \
 
 
-/**
- * @brief Performs a blocking assignment for AXI signals.
- * @usecase Use this within procedural blocks (initial/always) for immediate, blocking signal updates.
- */
+/*
+  @brief Performs a blocking assignment for AXI signals.
+  @usecase Use this within procedural blocks (initial/always) for immediate, blocking signal updates.
+*/
 `define AXI_BLOCKING_ASSIGN(__M__, __S__)                              \
   `AXI_COMMUNICATION(``__M__``, ``__S__``, , =)                        \
+
+
+/*
+  @brief Performs a non-blocking assignment for AXI signals.
+  @usecase Use this within procedural blocks (initial/always) for scheduled, non-blocking signal updates.
+*/
 `define AXI_NONBLOCKING_ASSIGN(__M__, __S__)                           \
   `AXI_COMMUNICATION(``__M__``, ``__S__``, , <=)                       \
 
