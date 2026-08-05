@@ -222,6 +222,8 @@ update_doc_list:
 	@echo "" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/include/*/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
+	@echo "# [`Coding & Commenting Guidelines`](https://github.com/squared-studio/documenter/blob/main/README.md)" >> readme.md
+	@echo "" >> readme.md
 
 .PHONY: create_all_docs
 create_all_docs:
