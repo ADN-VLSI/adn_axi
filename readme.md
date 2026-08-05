@@ -28,7 +28,6 @@
 ## INTERFACE
 [`dummy_interface`](document/interface/dummy_interface.md)
 
-[`dummy_interface`](https://github.com/ADN-VLSI/adn_common/blob/main/document/interface/dummy_interface.md)
 
 ## INCLUDE
 [`axi/assign.svh`](document/include/axi/assign.md)
@@ -36,9 +35,6 @@
 [`axil/typedef.svh`](document/include/axil/typedef.md)
 [`axi/typedef.svh`](document/include/axi/typedef.md)
 
-[`pmi/assign.svh`](https://github.com/ADN-VLSI/adn_common/blob/main/document/include/pmi/assign.md)
-[`pmi/typedef.svh`](https://github.com/ADN-VLSI/adn_common/blob/main/document/include/pmi/typedef.md)
-[`vip/adn_common_tb_headers.sv`](https://github.com/ADN-VLSI/adn_common/blob/main/document/include/vip/adn_common_tb_headers.md)
 
 ---
 
