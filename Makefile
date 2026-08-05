@@ -233,7 +233,7 @@ update_doc_list:
 	@$(foreach file, $(shell find $(REPO_ROOT)/document/include -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/include/*/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
-	@sed -E -i 's|submodule/([^/]+)|https://github.com/ADN-VLSI/\1/blob/main|g' readme.md
+	@perl -pi -e 's|submodule/([^/]+)|https://github.com/ADN-VLSI/$$1/blob/main|g' readme.md
 	@echo "" >> readme.md
 	@echo '<span style="font-size: 1.3em; font-weight: bold;"> <a href="https://github.com/squared-studio/documenter/blob/main/README.md">Coding & Commenting Guidelines</a></span>' >> readme.md
 	@echo "" >> readme.md
