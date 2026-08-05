@@ -210,11 +210,17 @@ update_doc_list:
 	@echo "## DESIGN SOURCE" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/document/source -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
+	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/source/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@echo "" >> readme.md
 	@echo "## INTERFACE" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/document/interface -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
+	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/interface/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@echo "" >> readme.md
 	@echo "## INCLUDE" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/document/include -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@echo "" >> readme.md
+	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/include/*/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
 
 .PHONY: create_all_docs
