@@ -166,7 +166,12 @@ compile_this_module:
 $(BUILD_DIR)/xelab_$(TOP):
 	@echo -e "\033[1;33m#\033[0m Elaborating $(TOP)"
 	@cd $(BUILD_DIR) && $(XELAB) $(TOP) -s snap_$(TOP) -debug all -log $(LOG_DIR)/xelab_$(TOP)_$(shell date +%Y%m%d_%H%M%S).log $(O_EW)
-	@echo "" > $(BUILD_DIR)/xelab_$(TOP)
+	@if [ $$? -ne 0 ]; then \
+		echo -e "\033[1;31m#\033[0m Elaboration failed, check log file $(LOG_DIR)/xelab_$(TOP)_$(shell date +%Y%m%d_%H%M%S).log"; \
+		exit 1; \
+	else \
+		echo "" > $(BUILD_DIR)/xelab_$(TOP); \
+	fi
 
 .PHONY: __ENV_BUILD__
 __ENV_BUILD__:
@@ -289,6 +294,7 @@ gen_source:
 		sed -i "s|nemotron|foez---bhai|g" $(REPO_ROOT)/source/$(RTL).sv; \
 		sed -i "s|__AUTHOR_NAME__|$$(git config user.name)|g" $(REPO_ROOT)/source/$(RTL).sv; \
 		sed -i "s|__AUTHOR_EMAIL__|$$(git config user.email)|g" $(REPO_ROOT)/source/$(RTL).sv; \
+		sed -i "s|YYYY-MM-DD|$$(date +%Y-%m-%d)|g" $(REPO_ROOT)/source/$(RTL).sv; \
 		sed -i "s|squared-studio/__REPO_NAME__|ADN-VLSI/$(REPO_FILE_EXT)|g" $(REPO_ROOT)/source/$(RTL).sv; \
 		sed -i "s|__YEAR__ squared-studio|$$(date +%Y) ADN Semiconductors|g" $(REPO_ROOT)/source/$(RTL).sv; \
 		sed -i "s|source_model|$(RTL)|g" $(REPO_ROOT)/source/$(RTL).sv; \
@@ -304,9 +310,12 @@ gen_testbench:
 		sed -i "s|nemotron|foez---bhai|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 		sed -i "s|__AUTHOR_NAME__|$$(git config user.name)|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 		sed -i "s|__AUTHOR_EMAIL__|$$(git config user.email)|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
+		sed -i "s|YYYY-MM-DD|$$(date +%Y-%m-%d)|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 		sed -i "s|squared-studio/__REPO_NAME__|ADN-VLSI/$(REPO_FILE_EXT)|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 		sed -i "s|__YEAR__ squared-studio|$$(date +%Y) ADN Semiconductors|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 		sed -i "s|testbench_model|$(TOP)|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 		sed -i "s|tb_ess.sv|adn_common_tb_headers.sv|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
+		sed -i "s|CASE_NOTE(1.*|note_case\(1\); // THIS IS A PASS|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
+		sed -i "s|CASE_NOTE(0.*|note_case\(0\); // THIS IS A FAIL|g" $(REPO_ROOT)/testbench/$(TOP).sv; \
 	fi
 	@code $(REPO_ROOT)/testbench/$(TOP).sv
