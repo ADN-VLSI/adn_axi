@@ -18,10 +18,10 @@ COVERAGE_DIR := $(REPO_ROOT)/coverage
 DOCUMENTER := $(REPO_ROOT)/submodule/documenter
 
 TN    := default
-TC    := 1
-GUI   := 0
+TC    := 0
 VCD   := 0
 DEBUG := 0
+GUI   := 0
 
 ####################################################################################################
 # Tools
@@ -50,23 +50,35 @@ LINE_4 := See LICENSE file in the project root for full license information
 
 .PHONY: help
 help:
+	@clear
 	@echo ""
-	@echo -e "Usage: make [\033[1;36mtarget\033[0m] [\033[1;35mVARIABLE=value\033[0m]"
-	@echo -e "\n\033[0;36mTARGETS\033[0m"
-	@echo -e "\033[0;36m|          help\033[0m : Show this help message"
-	@echo -e "\033[0;36m|         clean\033[0m : Clean build directory"
-	@echo -e "\033[0;36m|    clean_full\033[0m : Clean build, log and coverage directories"
-	@echo -e "\033[0;36m|      simulate\033[0m : Compile and simulate the design"
-	@echo -e "\033[0;36m|    regression\033[0m : Run regression tests"
-	@echo -e "\033[0;36m|    gen_source\033[0m : Generate a new source file template"
-	@echo -e "\033[0;36m| gen_testbench\033[0m : Generate a new testbench file template"
-	@echo -e "\n\033[0;35mVARIABLES\033[0m"
-	@echo -e "\033[0;35m|    TOP\033[0m : Specify the top-level module for simulation (default: $(TOP))"
-	@echo -e "\033[0;35m|     TN\033[0m : Specify the test name for simulation (default: $(TN))"
-	@echo -e "\033[0;35m|     TC\033[0m : Specify the test count for simulation (default: $(TC))"
-	@echo -e "\033[0;35m|    GUI\033[0m : Specify whether to run simulation in GUI mode (0 or 1, default: $(GUI))"
-	@echo -e "\033[0;35m|    VCD\033[0m : Specify whether to generate VCD waveform file (0 or 1, default: $(VCD))"
-	@echo -e "\033[0;35m|  DEBUG\033[0m : Specify whether to enable debug mode (0 or 1, default: $(DEBUG))"
+	@echo -e "    \033[1;32m# Shows this help message\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36mhelp\033[0m"
+	@echo ""
+	@echo -e "    \033[1;32m# Create Design Source from Template\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36mgen_source\033[0m RTL=\033[0;35m<design_module_name>\033[0m"
+	@echo ""
+	@echo -e "    \033[1;32m# Create Testbench from Template\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36mgen_testbench\033[0m RTL=\033[0;35m<top_module_name>\033[0m"
+	@echo ""
+	@echo -e "    \033[1;32m# Run simulation for a selected top module and test case, etc.\033[0m"
+	@echo -e "    \033[1;32m# The arguments are passed to the testbench to as follows:\033[0m"
+	@echo -e "    \033[0;32m#   TOP   : string top_name;     // TESTBENCH TOP MODULE NAME\033[0m"
+	@echo -e "    \033[0;32m#   TN    : string test_name;    // TEST CASE NAME\033[0m"
+	@echo -e "    \033[0;32m#   TC    : int    test_count;   // REPEAT COUNT\033[0m"
+	@echo -e "    \033[0;32m#   VCD   : int    vcd;          // GENERATE VCD FILE\033[0m"
+	@echo -e "    \033[0;32m#   DEBUG : int    debug;        // ENABLE DEBUG MODE\033[0m"
+	@echo -e "    \033[1;32m# GUI : Run simulation in GUI mode\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36msimulate\033[0m TOP=\033[0;35m<top_module_name>\033[0m TN=\033[0;35m<test_case_name>\033[0m TC=\033[0;35m<int>\033[0m VCD=\033[0;35m<int>\033[0m DEBUG=\033[0;35m<int>\033[0m GUI=\033[0;35m<0|1>\033[0m"
+	@echo ""
+	@echo -e "    \033[1;32m# Clean build directory\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36mclean\033[0m"
+	@echo ""
+	@echo -e "    \033[1;32m# Clean build, log and coverage directories\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36mclean_full\033[0m"
+	@echo ""
+	@echo -e "    \033[1;32m# Run Regression\033[0m"
+	@echo -e "    \033[0;33mmake\033[0m \033[0;36mregression\033[0m"
 	@echo ""
 
 $(BUILD_DIR) $(LOG_DIR) $(COVERAGE_DIR):
@@ -207,7 +219,7 @@ update_doc_list:
 	@make -s create_all_docs
 	@cat readme_base.md > readme.md
 	@echo "" >> readme.md
-	@echo "## DESIGN SOURCE" >> readme.md
+	@echo "## SOURCE" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/document/source -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/source/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
@@ -221,8 +233,9 @@ update_doc_list:
 	@$(foreach file, $(shell find $(REPO_ROOT)/document/include -name "*.md" | sort), make -s get_source_doc_header FILE=$(file);)
 	@echo "" >> readme.md
 	@$(foreach file, $(shell find $(REPO_ROOT)/submodule/ -wholename "$(REPO_ROOT)/submodule/*/document/include/*/*.md" | sort), make -s get_source_doc_header FILE=$(file);)
+	@sed -E -i 's|submodule/([^/]+)|https://github.com/ADN-VLSI/\\1/blob/main|g' readme.md
 	@echo "" >> readme.md
-	@echo "# [`Coding & Commenting Guidelines`](https://github.com/squared-studio/documenter/blob/main/README.md)" >> readme.md
+	@echo '<span style="font-size: 1.3em; font-weight: bold;"> <a href="https://github.com/squared-studio/documenter/blob/main/README.md">Coding & Commenting Guidelines</a></span>' >> readme.md
 	@echo "" >> readme.md
 
 .PHONY: create_all_docs
@@ -234,12 +247,9 @@ create_all_docs:
 
 .PHONY: clean_all_docs
 clean_all_docs:
-	@mkdir -p $(REPO_ROOT)/document/include
-	@mkdir -p $(REPO_ROOT)/document/interface
 	@mkdir -p $(REPO_ROOT)/document/source
-	@rm -f $(REPO_ROOT)/document/include/*.md
-	@rm -f $(REPO_ROOT)/document/interface/*.md
-	@rm -f $(REPO_ROOT)/document/interface/*_top.svg
+	@rm -rf $(REPO_ROOT)/document/include
+	@rm -rf $(REPO_ROOT)/document/interface
 	@rm -f $(REPO_ROOT)/document/source/*.md
 	@rm -f $(REPO_ROOT)/document/source/*_top.svg
 
