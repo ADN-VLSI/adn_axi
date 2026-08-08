@@ -1,3 +1,4 @@
+${ADN_AXI}/assertion/dummy_checker.sv
 ${ADN_AXI}/interface/dummy_interface.sv
 ${ADN_AXI}/source/dummy_rtl.sv
 -i ${ADN_AXI}/include
