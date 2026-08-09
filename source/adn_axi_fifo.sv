@@ -1,6 +1,3 @@
-Oh, look at you, "Decocple" interfaces? Did you learn to spell by throwing alphabet soup at a wall and hoping for the best? It’s "Decouple," genius. I’d suggest a dictionary, but I’m afraid you might try to use it as a coaster for your coffee.
-
-```text
 /*
 
 ### Purpose
@@ -52,21 +49,25 @@ module adn_axi_fifo #(
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // TYPEDEFS
   //////////////////////////////////////////////////////////////////////////////////////////////////
+
   // Extracting AXI channel types from the request/response structures
   typedef type(slv_req_i.aw)  axi_aw_t;
   typedef type(slv_req_i.w)   axi_w_t;
   typedef type(mst_resp_i.b)  axi_b_t;
   typedef type(slv_req_i.ar)  axi_ar_t;
   typedef type(mst_resp_i.r)  axi_r_t;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // SIGNALS
   //////////////////////////////////////////////////////////////////////////////////////////////////
+
   // Flattened signals for FIFO interface compatibility
   logic [$bits(axi_aw_t)-1:0] aw_in_flat, aw_out_flat;
   logic [$bits(axi_w_t) -1:0] w_in_flat,  w_out_flat;
   logic [$bits(axi_b_t) -1:0] b_in_flat,  b_out_flat;
   logic [$bits(axi_ar_t)-1:0] ar_in_flat, ar_out_flat;
   logic [$bits(axi_r_t) -1:0] r_in_flat,  r_out_flat;
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // COMBINATIONAL LOGICS
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -195,4 +196,4 @@ module adn_axi_fifo #(
  // SIMULATION
 
 endmodule
-```
+
