@@ -1,5 +1,7 @@
 # adn_axi_fifo (module)
 
+### Author: Md Sakhawat Hossain Sabbir (sabbirone939@gmail.com)
+
 ### Source: adn_axi_fifo.sv
 
 ## Top IO
@@ -34,4 +36,18 @@
 
 ## Description
 
-_No top-level description found._
+### Purpose
+The `adn_axi_fifo` module provides a configurable, multi-channel FIFO buffer for AXI4 interfaces. It decouples the AXI master and slave by inserting independent FIFO buffers into each of the five AXI channels (AW, W, B, AR, and R), allowing for improved timing closure and throughput management in high-speed interconnects.
+
+### Use Case
+This module is primarily used in high-performance SoC designs to bridge clock domains or to act as a pipeline stage between AXI masters and slaves. By inserting this FIFO, designers can:
+- **Improve Timing Closure:** Break long combinatorial paths between master and slave interfaces.
+- **Increase Throughput:** Buffer bursts to prevent stalls in the AXI interconnect when the slave is temporarily busy.
+- **Decouple Interfaces:** Allow the master and slave to operate with different backpressure characteristics without stalling the entire bus.
+
+| REVISION | DATE       | AUTHOR                     | DESCRIPTION                                            |
+|----------|------------|----------------------------|--------------------------------------------------------|
+| 0.1      | 2026-08-09 | Md Sakhawat Hossain Sabbir | Initial version                                        |
+| 1.0      | 2026-08-09 | Md Sakhawat Hossain Sabbir | Stable release                                         |
+
+Author : Md Sakhawat Hossain Sabbir (sabbirone939@gmail.com)
