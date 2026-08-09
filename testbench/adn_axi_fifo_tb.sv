@@ -145,10 +145,9 @@ adn_axi_fifo #(
 
     drive_aw(item);
 
-    repeat (3) @(posedge clk_i);   // checker কে সময় দাও compare করার জন্য
-
+    repeat (3) @(posedge clk_i);
     if (aw_ref_q.size() == 0)
-      note_case(1);   // queue খালি মানে item পপ হয়ে গেছে, checker mismatch পায়নি
+      note_case(1); 
     else
       note_case(0);
   endtask
