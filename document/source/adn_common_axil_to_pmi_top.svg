@@ -1,0 +1,33 @@
+<svg height="790" width="790" xmlns="http://www.w3.org/2000/svg">
+<rect width="100%" height="100%" x="0" y="0" style="fill:white;stroke:white;stroke-width:0"/>
+<g style="fill:white;stroke:black;stroke-width:1">
+<rect width="675" height="675" x="60" y="60"/>
+<polygon points="10,95 10,85 30,85 40,95 60,95 40,95 30,105 10,105 10,95"/>
+<text x="65" y="85" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">clk</text>
+<polygon points="10,195 10,185 30,185 40,195 60,195 40,195 30,205 10,205 10,195"/>
+<text x="65" y="185" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">arst_n</text>
+<polygon points="10,295 10,285 30,285 40,295 60,295 40,295 30,305 10,305 10,295"/>
+<text x="65" y="285" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">s_axil_req</text>
+<polygon points="10,395 10,385 30,385 40,395 60,395 40,395 30,405 10,405 10,395"/>
+<text x="65" y="385" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mgnt</text>
+<polygon points="10,495 10,485 30,485 40,495 60,495 40,495 30,505 10,505 10,495"/>
+<text x="65" y="485" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mack</text>
+<polygon points="10,595 10,585 30,585 40,595 60,595 40,595 30,605 10,605 10,595"/>
+<text x="65" y="585" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mrdata</text>
+<polygon points="10,695 10,685 30,685 40,695 60,695 40,695 30,705 10,705 10,695"/>
+<text x="65" y="685" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mresp</text>
+<polygon points="735,195 755,195 755,185 775,185 785,195 775,205 755,205 755,195 735,195"/>
+<text x="730" y="185" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">s_axil_resp</text>
+<polygon points="735,295 755,295 755,285 775,285 785,295 775,305 755,305 755,295 735,295"/>
+<text x="730" y="285" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">maddr</text>
+<polygon points="735,395 755,395 755,385 775,385 785,395 775,405 755,405 755,395 735,395"/>
+<text x="730" y="385" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">mwe</text>
+<polygon points="735,495 755,495 755,485 775,485 785,495 775,505 755,505 755,495 735,495"/>
+<text x="730" y="485" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">mwdata</text>
+<polygon points="735,595 755,595 755,585 775,585 785,595 775,605 755,605 755,595 735,595"/>
+<text x="730" y="585" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">mstrb</text>
+<polygon points="735,695 755,695 755,685 775,685 785,695 775,705 755,705 755,695 735,695"/>
+<text x="730" y="685" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">mreq</text>
+<text x="397" y="750" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_common_axil_to_pmi</text>
+</g>
+</svg>
