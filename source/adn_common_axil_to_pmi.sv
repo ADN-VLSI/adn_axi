@@ -1,8 +1,10 @@
 /*
 
-@foez-bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Purpose
+The `adn_common_axil_to_pmi` module acts as a bridge interface that converts AXI-Lite transactions into a custom PMI (Private Memory Interface) protocol. It manages request buffering, transaction ordering, and response synchronization to ensure reliable data transfer between an AXI-Lite master and a PMI-compliant slave.
 
-@foez-bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Use Case
+This module is designed for systems where an AXI-Lite master (such as a CPU or DMA controller) needs to communicate with a proprietary memory or peripheral subsystem that utilizes the Private Memory Interface (PMI). It handles the protocol translation, allowing the AXI-Lite master to perform standard read and write operations while the module manages the complexities of PMI handshaking, request queuing, and response reordering.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
@@ -31,11 +33,13 @@ See LICENSE file in the project root for full license information
 typedef axil_req_t axil_req_port_t;
 typedef axil_resp_t axil_resp_port_t;
 
-// @foez-bhai, add comments to the parameters, ports
 module adn_common_axil_to_pmi #(
 
+    // Width of the address bus
     parameter int ADDR_WIDTH = `ADDR_WIDTH,
+    // Width of the data bus
     parameter int DATA_WIDTH = `DATA_WIDTH,
+    // Depth of the internal transaction FIFOs
     parameter int FIFO_DEPTH = 8
 
 ) (
@@ -93,8 +97,6 @@ module adn_common_axil_to_pmi #(
     input logic mresp
 
 );
-
-  // @foez-bhai, add comments to the functional blocks, signals, and submodules
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // LOCALPARAMS GENERATED
@@ -899,4 +901,3 @@ module adn_common_axil_to_pmi #(
 
 
 endmodule
-
