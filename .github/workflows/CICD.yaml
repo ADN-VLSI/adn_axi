@@ -58,7 +58,6 @@ jobs:
       - name: Update Documentations & Lists
         shell: bash
         run: |
-          git submodule update --init --depth 1 submodule/documenter
           make update_doc_list
 
       - name: Commit and push changes
@@ -67,7 +66,7 @@ jobs:
           git config user.name "Foez Ahmed"
           git config user.email "foez.official@gmail.com"
           git add .
-          git restore --staged submodule
+          git restore --staged submodule || true
           git commit -m "auto-update" || make regression
           git push origin HEAD
 
