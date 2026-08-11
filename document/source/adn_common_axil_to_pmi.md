@@ -27,15 +27,8 @@
 |arst_n|input|logic||Active-low asynchronous reset|
 |s_axil_req|input|axil_req_t||AXI-Lite slave request interface|
 |s_axil_resp|output|axil_resp_t||AXI-Lite slave response interface|
-|maddr|output|logic [ADDR_WIDTH-1:0]||PMI request address|
-|mwe|output|logic||PMI write enable|
-|mwdata|output|logic [DATA_WIDTH-1:0]||PMI write data|
-|mstrb|output|logic [DATA_WIDTH/8-1:0]||PMI byte write strobe|
-|mreq|output|logic||PMI request valid|
-|mgnt|input|logic||PMI request grant|
-|mack|input|logic||PMI transaction acknowledge|
-|mrdata|input|logic [DATA_WIDTH-1:0]||PMI read response data|
-|mresp|input|logic||PMI response error indicator|
+|m_pmi_req|output|pmi_req_t||PMI master request interface|
+|m_pmi_resp|input|pmi_resp_t||PMI master response interface|
 
 
 ## Description
