@@ -6,10 +6,10 @@ The `adn_common_axil_to_pmi` module acts as a bridge interface that converts AXI
 ### Use Case
 This module is designed for systems where an AXI-Lite master (such as a CPU or DMA controller) needs to communicate with a proprietary memory or peripheral subsystem that utilizes the Private Memory Interface (PMI). It handles the protocol translation, allowing the AXI-Lite master to perform standard read and write operations while the module manages the complexities of PMI handshaking, request queuing, and response reordering.
 
-| REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
-|----------|------------|-----------------|--------------------------------------------------------|
-| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                        |
-| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                         |
+| REVISION | DATE       | AUTHOR                 | DESCRIPTION                                     |
+|----------|------------|------------------------|-------------------------------------------------|
+| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                 |
+| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                  |
 
 Author : Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)
 This file is part of ADN-VLSI/adn_axi
@@ -18,21 +18,6 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
-`timescale 1ns / 1ps
-`include "axil/typedef.svh"
-`include "pmi/typedef.svh"
-
-`ifndef ADDR_WIDTH
-`define ADDR_WIDTH 32
-`endif
-
-`ifndef DATA_WIDTH
-`define DATA_WIDTH 32
-`endif
-
-`AXIL_T(axil, `ADDR_WIDTH, `DATA_WIDTH)
-`PMI_T(pmi, `ADDR_WIDTH, `DATA_WIDTH)
-
 module adn_common_axil_to_pmi #(
 
     // Width of the address bus
@@ -49,7 +34,6 @@ module adn_common_axil_to_pmi #(
 
     // Clock input
     input logic clk,
-
     // Active-low asynchronous reset
     input logic arst_n,
 
@@ -60,7 +44,6 @@ module adn_common_axil_to_pmi #(
 
     // AXI-Lite slave request interface
     input axil_req_t s_axil_req,
-
     // AXI-Lite slave response interface
     output axil_resp_t s_axil_resp,
 
@@ -71,7 +54,6 @@ module adn_common_axil_to_pmi #(
 
     // PMI master request interface
     output pmi_req_t m_pmi_req,
-
     // PMI master response interface
     input pmi_resp_t m_pmi_resp
 
