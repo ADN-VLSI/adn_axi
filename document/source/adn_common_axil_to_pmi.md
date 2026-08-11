@@ -14,8 +14,8 @@
 
 |Name|Type|Dimension|Default|Description|
 |-|-|-|-|-|
-|ADDR_WIDTH|int||`ADDR_WIDTH||
-|DATA_WIDTH|int||`DATA_WIDTH||
+|ADDR_WIDTH|int||`ADDR_WIDTH|Width of the address bus|
+|DATA_WIDTH|int||`DATA_WIDTH|Width of the data bus|
 |FIFO_DEPTH|int||8|Depth of the internal transaction FIFOs|
 
 
@@ -39,9 +39,9 @@ The `adn_common_axil_to_pmi` module acts as a bridge interface that converts AXI
 ### Use Case
 This module is designed for systems where an AXI-Lite master (such as a CPU or DMA controller) needs to communicate with a proprietary memory or peripheral subsystem that utilizes the Private Memory Interface (PMI). It handles the protocol translation, allowing the AXI-Lite master to perform standard read and write operations while the module manages the complexities of PMI handshaking, request queuing, and response reordering.
 
-| REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
-|----------|------------|-----------------|--------------------------------------------------------|
-| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                        |
-| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                         |
+| REVISION | DATE       | AUTHOR                 | DESCRIPTION                                     |
+|----------|------------|------------------------|-------------------------------------------------|
+| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                 |
+| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                  |
 
 Author : Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)
