@@ -74,6 +74,7 @@ See LICENSE file in the project root for full license information
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 `timescale 1ns / 1ps
+`include "pmi/typedef.svh"
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // TYPEDEFS
@@ -110,15 +111,8 @@ module adn_common_axil_to_pmi_tb;
     axil_req_t  s_axil_req;
     axil_resp_t s_axil_resp;
 
-    logic [ADDR_WIDTH-1:0]   maddr;
-    logic                    mwe;
-    logic [DATA_WIDTH-1:0]   mwdata;
-    logic [DATA_WIDTH/8-1:0] mstrb;
-    logic                    mreq;
-    logic                    mgnt;
-    logic                    mack;
-    logic [DATA_WIDTH-1:0]   mrdata;
-    logic                    mresp;
+    pmi_req_t  m_pmi_req;
+    pmi_resp_t m_pmi_resp;
 
     int pass_count = 0;
     int fail_count = 0;
@@ -164,15 +158,8 @@ module adn_common_axil_to_pmi_tb;
         .arst_n      (arst_n),
         .s_axil_req  (s_axil_req),
         .s_axil_resp (s_axil_resp),
-        .maddr       (maddr),
-        .mwe         (mwe),
-        .mwdata      (mwdata),
-        .mstrb       (mstrb),
-        .mreq        (mreq),
-        .mgnt        (mgnt),
-        .mack        (mack),
-        .mrdata      (mrdata),
-        .mresp       (mresp)
+        .m_pmi_req   (m_pmi_req),
+        .m_pmi_resp  (m_pmi_resp)
     );
     //////////////////////////////////////////////////////////////////////////////////////////////
     // PMI MEMORY MODEL  (generic pipelined req/grant/ack, see ASSUMPTIONS block at top)
@@ -218,13 +205,13 @@ module adn_common_axil_to_pmi_tb;
             pq_head = 0;
             pq_tail = 0;
             pq_size = 0;
-            mgnt    = 1'b0;
-            mack    = 1'b0;
-            mrdata  = '0;
-            mresp   = 1'b0;
+            m_pmi_resp.mgnt  = 1'b0;
+            m_pmi_resp.mack = 1'b0;
+            m_pmi_resp.mrdata = '0;
+            m_pmi_resp.mresp = 1'b0;
         end else begin
             bit err;
-            mack = 1'b0;
+            m_pmi_resp.mack = 1'b0;
 
             // 1) age / complete the oldest pending transaction
             if (pq_size > 0) begin
@@ -240,12 +227,12 @@ module adn_common_axil_to_pmi_tb;
                                     = pq_wdata[pq_head][b*8 +: 8];
                             end
                         end
-                        mrdata = '0;
+                        m_pmi_resp.mrdata = '0;
                     end else begin
-                        mrdata = mem[pq_addr[pq_head][$clog2(MEM_DEPTH_WORDS)+1:2]];
+                        m_pmi_resp.mrdata = mem[pq_addr[pq_head][$clog2(MEM_DEPTH_WORDS)+1:2]];
                     end
-                    mresp = err;
-                    mack  = 1'b1;
+                    m_pmi_resp.mresp = err;
+                    m_pmi_resp.mack  = 1'b1;
 
                     pq_head = (pq_head + 1) % PMI_MODEL_CAPACITY;
                     pq_size = pq_size - 1;
@@ -253,20 +240,20 @@ module adn_common_axil_to_pmi_tb;
             end
 
             // 2) grant + accept a new request if there's room and we're not deliberately stalling
-            if (mreq && !mgnt && !pmi_stall_grant &&
+            if (m_pmi_req.mreq && !m_pmi_resp.mgnt && !pmi_stall_grant &&
                 (pq_size < pmi_max_outstanding) && (pq_size < PMI_MODEL_CAPACITY)) begin
-                mgnt = 1'b1;
+                m_pmi_resp.mgnt = 1'b1;
 
-                pq_addr [pq_tail] = maddr;
-                pq_we   [pq_tail] = mwe;
-                pq_wdata[pq_tail] = mwdata;
-                pq_strb [pq_tail] = mstrb;
+                pq_addr [pq_tail] = m_pmi_req.maddr;
+                pq_we   [pq_tail] = m_pmi_req.mwe;
+                pq_wdata[pq_tail] = m_pmi_req.mwdata;
+                pq_strb [pq_tail] = m_pmi_req.mstrb;
                 pq_cntdn[pq_tail] = $urandom_range(pmi_max_ack_latency, pmi_min_ack_latency);
 
                 pq_tail = (pq_tail + 1) % PMI_MODEL_CAPACITY;
                 pq_size = pq_size + 1;
             end else begin
-                mgnt = 1'b0;
+                m_pmi_resp.mgnt = 1'b0;
             end
         end
     end
@@ -280,11 +267,10 @@ module adn_common_axil_to_pmi_tb;
     //////////////////////////////////////////////////////////////////////////////////////////////
     // PROTOCOL ASSERTIONS (lightweight, catch obvious DUT-side handshake bugs)
     //
-    // Icarus Verilog's parser doesn't handle `property`/`assert property` at all (not even to
-    // skip them), so this whole block is compiled out under Icarus (`__ICARUS__` is predefined
-    // by iverilog) and kept for real tools (VCS/Questa/Xcelium/Verilator) where SVA works.
+    // XSim does not support the property forms used here, so keep these checks opt-in for
+    // simulators with complete SVA support.
     //////////////////////////////////////////////////////////////////////////////////////////////
-`ifndef XSIM
+`ifdef ENABLE_SVA
     // AW/W/AR address+data must stay stable while valid is asserted and ready hasn't come yet.
     property p_stable(valid_sig, ready_sig, payload_sig);
         @(posedge clk) disable iff (!arst_n)
@@ -301,16 +287,16 @@ module adn_common_axil_to_pmi_tb;
 
     // No X on the PMI address/data when a request is actually being issued.
     ap_no_x_maddr: assert property (
-        @(posedge clk) disable iff (!arst_n) (mreq |-> !$isunknown(maddr))
+        @(posedge clk) disable iff (!arst_n) (m_pmi_req.mreq |-> !$isunknown(m_pmi_req.maddr))
     ) else $error("maddr is X while mreq=1");
 
     // mreq must not glitch low without ever seeing a grant (basic valid stability, per PMI
     // assumption #3 above). Adjust/remove if your real PMI target allows req to retract early.
     ap_mreq_holds_until_grant: assert property (
         @(posedge clk) disable iff (!arst_n)
-        (mreq && !mgnt) |=> mreq
+        (m_pmi_req.mreq && !m_pmi_resp.mgnt) |=> m_pmi_req.mreq
     ) else $error("mreq deasserted before being granted (mgnt) -- check PMI assumption in TB header");
-`endif // __ICARUS__
+`endif // ENABLE_SVA
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // AXI-LITE DRIVER TASKS
