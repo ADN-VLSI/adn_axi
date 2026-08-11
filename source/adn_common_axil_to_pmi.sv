@@ -18,6 +18,7 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
+`timescale 1ns / 1ps
 `include "axil/typedef.svh"
 `include "pmi/typedef.svh"
 
