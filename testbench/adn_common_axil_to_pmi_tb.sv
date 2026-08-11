@@ -73,7 +73,6 @@ See LICENSE file in the project root for full license information
 //   does in a couple of spots instead of using the more "obvious" SV construct.
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-`timescale 1ns / 1ps
 `include "pmi/typedef.svh"
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -525,10 +524,10 @@ module adn_common_axil_to_pmi_tb;
         pmi_error_addr_valid = 1;
 
         axil_write(32'h0000_0F00, 32'hBAD0_0000, '1, bresp);
-        tb_note_case("TC6: write to error address returns non-OKAY bresp", bresp != 2'b00);
+        tb_note_case("TC6: write to non existent returns non-OKAY bresp", bresp != 2'b00);
 
         axil_read(32'h0000_0F00, rdata, rresp);
-        tb_note_case("TC6: read from error address returns non-OKAY rresp", rresp != 2'b00);
+        tb_note_case("TC6: read from non existent returns non-OKAY rresp", rresp != 2'b00);
 
         pmi_error_addr_valid = 0;
     endtask
@@ -628,7 +627,8 @@ module adn_common_axil_to_pmi_tb;
         $display("==================================================================");
 
         apply_reset();
-
+case(test_name)
+    "TC_ALL": begin
         tc1_basic_write_readback();
         tc2_back_to_back_writes();
         tc3_partial_strobe();
@@ -639,7 +639,29 @@ module adn_common_axil_to_pmi_tb;
         tc8_random_traffic(50);
 
         print_summary();
-        $finish;
+    end
+    "TC_001": tc1_basic_write_readback();
+    "TC_002": tc2_back_to_back_writes();
+    "TC_003": tc3_partial_strobe();
+    "TC_004": tc4_outstanding_stress();
+    "TC_005": tc5_pmi_grant_backpressure();
+    "TC_006": tc6_pmi_error_response();
+    "TC_007": tc7_reset_mid_transaction();
+    "TC_008": tc8_random_traffic(50);
+    default: begin
+        tc1_basic_write_readback();
+        tc2_back_to_back_writes();
+        tc3_partial_strobe();
+        tc4_outstanding_stress();
+        tc5_pmi_grant_backpressure();
+        tc6_pmi_error_response();
+        tc7_reset_mid_transaction();
+        tc8_random_traffic(50);
+        print_summary();
+
+    end
+endcase
+  $finish;
     end
 
     // global watchdog in case something hangs completely

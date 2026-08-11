@@ -18,7 +18,6 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
-`timescale 1ns / 1ps
 `include "axil/typedef.svh"
 `include "pmi/typedef.svh"
 
@@ -583,7 +582,6 @@ module adn_common_axil_to_pmi #(
         2'd2: txn_wr_ptr <= ptr_inc(ptr_inc(txn_wr_ptr));
 
 
-        default: txn_wr_ptr <= txn_wr_ptr;
 
       endcase
 
@@ -604,7 +602,6 @@ module adn_common_axil_to_pmi #(
 
         3'b101: txn_count <= txn_count + 1;
 
-        default: txn_count <= txn_count;
 
       endcase
 
@@ -721,7 +718,6 @@ module adn_common_axil_to_pmi #(
         2'b01: out_count <= out_count - 1'b1;
 
 
-        default: out_count <= out_count;
 
 
       endcase
@@ -786,7 +782,6 @@ module adn_common_axil_to_pmi #(
         2'b01: rsp_count <= rsp_count - 1'b1;
 
 
-        default: rsp_count <= rsp_count;
 
 
       endcase
