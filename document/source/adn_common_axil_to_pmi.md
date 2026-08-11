@@ -14,8 +14,8 @@
 
 |Name|Type|Dimension|Default|Description|
 |-|-|-|-|-|
-|ADDR_WIDTH|int||`ADDR_WIDTH||
-|DATA_WIDTH|int||`DATA_WIDTH||
+|ADDR_WIDTH|int||`ADDR_WIDTH|Width of the address bus|
+|DATA_WIDTH|int||`DATA_WIDTH|Width of the data bus|
 |FIFO_DEPTH|int||8|Depth of the internal transaction FIFOs|
 
 
@@ -27,15 +27,8 @@
 |arst_n|input|logic||Active-low asynchronous reset|
 |s_axil_req|input|axil_req_t||AXI-Lite slave request interface|
 |s_axil_resp|output|axil_resp_t||AXI-Lite slave response interface|
-|maddr|output|logic [ADDR_WIDTH-1:0]||PMI request address|
-|mwe|output|logic||PMI write enable|
-|mwdata|output|logic [DATA_WIDTH-1:0]||PMI write data|
-|mstrb|output|logic [DATA_WIDTH/8-1:0]||PMI byte write strobe|
-|mreq|output|logic||PMI request valid|
-|mgnt|input|logic||PMI request grant|
-|mack|input|logic||PMI transaction acknowledge|
-|mrdata|input|logic [DATA_WIDTH-1:0]||PMI read response data|
-|mresp|input|logic||PMI response error indicator|
+|m_pmi_req|output|pmi_req_t||PMI master request interface|
+|m_pmi_resp|input|pmi_resp_t||PMI master response interface|
 
 
 ## Description
@@ -46,9 +39,9 @@ The `adn_common_axil_to_pmi` module acts as a bridge interface that converts AXI
 ### Use Case
 This module is designed for systems where an AXI-Lite master (such as a CPU or DMA controller) needs to communicate with a proprietary memory or peripheral subsystem that utilizes the Private Memory Interface (PMI). It handles the protocol translation, allowing the AXI-Lite master to perform standard read and write operations while the module manages the complexities of PMI handshaking, request queuing, and response reordering.
 
-| REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
-|----------|------------|-----------------|--------------------------------------------------------|
-| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                        |
-| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                         |
+| REVISION | DATE       | AUTHOR                 | DESCRIPTION                                     |
+|----------|------------|------------------------|-------------------------------------------------|
+| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                 |
+| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                  |
 
 Author : Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)

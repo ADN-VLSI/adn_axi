@@ -6,10 +6,10 @@ The `adn_common_axil_to_pmi` module acts as a bridge interface that converts AXI
 ### Use Case
 This module is designed for systems where an AXI-Lite master (such as a CPU or DMA controller) needs to communicate with a proprietary memory or peripheral subsystem that utilizes the Private Memory Interface (PMI). It handles the protocol translation, allowing the AXI-Lite master to perform standard read and write operations while the module manages the complexities of PMI handshaking, request queuing, and response reordering.
 
-| REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
-|----------|------------|-----------------|--------------------------------------------------------|
-| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                        |
-| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                         |
+| REVISION | DATE       | AUTHOR                 | DESCRIPTION                                     |
+|----------|------------|------------------------|-------------------------------------------------|
+| 0.1      | 2026-08-09 | Md. Sakib Hasan Shawon | Initial version                                 |
+| 1.0      | YYYY-MM-DD | Md. Sakib Hasan Shawon | Stable release                                  |
 
 Author : Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)
 This file is part of ADN-VLSI/adn_axi
@@ -18,21 +18,6 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
-`include "axil/typedef.svh"
-
-`ifndef ADDR_WIDTH
-`define ADDR_WIDTH 32
-`endif
-
-`ifndef DATA_WIDTH
-`define DATA_WIDTH 32
-`endif
-
-`AXIL_T(axil, `ADDR_WIDTH, `DATA_WIDTH)
-
-typedef axil_req_t axil_req_port_t;
-typedef axil_resp_t axil_resp_port_t;
-
 module adn_common_axil_to_pmi #(
 
     // Width of the address bus
@@ -49,7 +34,6 @@ module adn_common_axil_to_pmi #(
 
     // Clock input
     input logic clk,
-
     // Active-low asynchronous reset
     input logic arst_n,
 
@@ -60,7 +44,6 @@ module adn_common_axil_to_pmi #(
 
     // AXI-Lite slave request interface
     input axil_req_t s_axil_req,
-
     // AXI-Lite slave response interface
     output axil_resp_t s_axil_resp,
 
@@ -69,32 +52,10 @@ module adn_common_axil_to_pmi #(
     // PMI MASTER INTERFACE
     //////////////////////////////////////////////////////////////////////////////////////////////
 
-    // PMI request address
-    output logic [ADDR_WIDTH-1:0] maddr,
-
-    // PMI write enable
-    output logic mwe,
-
-    // PMI write data
-    output logic [DATA_WIDTH-1:0] mwdata,
-
-    // PMI byte write strobe
-    output logic [DATA_WIDTH/8-1:0] mstrb,
-
-    // PMI request valid
-    output logic mreq,
-
-    // PMI request grant
-    input logic mgnt,
-
-    // PMI transaction acknowledge
-    input logic mack,
-
-    // PMI read response data
-    input logic [DATA_WIDTH-1:0] mrdata,
-
-    // PMI response error indicator
-    input logic mresp
+    // PMI master request interface
+    output pmi_req_t m_pmi_req,
+    // PMI master response interface
+    input pmi_resp_t m_pmi_resp
 
 );
 
@@ -316,12 +277,12 @@ module adn_common_axil_to_pmi #(
 
 
   // PMI request generation
-  assign mreq = arst_n && pmi_req_valid;
+  assign m_pmi_req.mreq = arst_n && pmi_req_valid;
 
 
 
   // PMI request acceptance
-  assign pmi_accept = arst_n && pmi_req_valid && mgnt;
+  assign pmi_accept = arst_n && pmi_req_valid && m_pmi_resp.mgnt;
 
 
 
@@ -335,14 +296,13 @@ module adn_common_axil_to_pmi #(
 
 
 
-  assign out_pop = arst_n && mack && (out_count != 0) && (!rsp_full || response_pop);
+  assign out_pop = arst_n && m_pmi_resp.mack && (out_count != 0) && (!rsp_full || response_pop);
 
 
 
-  // PMI response is stored whenever PMI acknowledges
-  assign response_push = arst_n && mack && (out_count != 0);
-
-  assign response_do_push = arst_n && mack && (!rsp_full || response_pop);
+  // PMI response is stored only when the response FIFO can accept it.
+  assign response_do_push = arst_n && m_pmi_resp.mack && (out_count != 0) &&
+                            (!rsp_full || response_pop);
 
   // AXI response FIFO consumption
   assign response_pop = !rsp_empty && (
@@ -455,23 +415,10 @@ module adn_common_axil_to_pmi #(
   // The payload is driven from registered signals rather than directly
   // from txn_fifo[txn_rd_ptr]. This prevents txn_rd_ptr from changing
   // the PMI address/data associated with an active request.
-  always_comb begin
-
-    maddr  = '0;
-    mwe    = 1'b0;
-    mwdata = '0;
-    mstrb  = '0;
-
-    if (arst_n && pmi_req_valid) begin
-
-      maddr  = pmi_req_addr;
-      mwe    = pmi_req_write;
-      mwdata = pmi_req_data;
-      mstrb  = pmi_req_strb;
-
-    end
-
-  end
+  assign m_pmi_req.maddr  = arst_n && pmi_req_valid ? pmi_req_addr  : '0;
+  assign m_pmi_req.mwe    = arst_n && pmi_req_valid ? pmi_req_write : 1'b0;
+  assign m_pmi_req.mwdata = arst_n && pmi_req_valid ? pmi_req_data  : '0;
+  assign m_pmi_req.mstrb  = arst_n && pmi_req_valid ? pmi_req_strb  : '0;
 
 
 
@@ -618,7 +565,6 @@ module adn_common_axil_to_pmi #(
         2'd2: txn_wr_ptr <= ptr_inc(ptr_inc(txn_wr_ptr));
 
 
-        default: txn_wr_ptr <= txn_wr_ptr;
 
       endcase
 
@@ -639,7 +585,6 @@ module adn_common_axil_to_pmi #(
 
         3'b101: txn_count <= txn_count + 1;
 
-        default: txn_count <= txn_count;
 
       endcase
 
@@ -756,7 +701,6 @@ module adn_common_axil_to_pmi #(
         2'b01: out_count <= out_count - 1'b1;
 
 
-        default: out_count <= out_count;
 
 
       endcase
@@ -789,8 +733,8 @@ module adn_common_axil_to_pmi #(
       if (response_do_push) begin
 
         response_fifo[rsp_wr_ptr].write <= response_write;
-        response_fifo[rsp_wr_ptr].data <= mrdata;
-        response_fifo[rsp_wr_ptr].resp <= mresp ? 2'b10 : 2'b00;
+        response_fifo[rsp_wr_ptr].data <= m_pmi_resp.mrdata;
+        response_fifo[rsp_wr_ptr].resp <= m_pmi_resp.mresp ? 2'b10 : 2'b00;
 
         rsp_wr_ptr <= ptr_inc(rsp_wr_ptr);
 
@@ -821,7 +765,6 @@ module adn_common_axil_to_pmi #(
         2'b01: rsp_count <= rsp_count - 1'b1;
 
 
-        default: rsp_count <= rsp_count;
 
 
       endcase
@@ -843,9 +786,9 @@ module adn_common_axil_to_pmi #(
 
         if (arst_n && pmi_accept) begin
 
-          if (maddr[$clog2(STRB_WIDTH)-1:0] != '0) begin
+          if (m_pmi_req.maddr[$clog2(STRB_WIDTH)-1:0] != '0) begin
 
-            $error("PMI address alignment violation: maddr=0x%0h DATA_WIDTH=%0d", maddr,
+            $error("PMI address alignment violation: maddr=0x%0h DATA_WIDTH=%0d", m_pmi_req.maddr,
                    DATA_WIDTH);
 
           end

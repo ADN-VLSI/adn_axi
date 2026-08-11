@@ -36,8 +36,10 @@ module adn_axi_fifo #(
   // PORTS
   input  logic       clk_i,       // System clock
   input  logic       arst_ni,     // Asynchronous reset, active low
+
   input  axi_req_t   slv_req_i,   // AXI request signals from Master
   output axi_resp_t  slv_resp_o,  // AXI response signals to Master
+
   output axi_req_t   mst_req_o,   // AXI request signals to Slave
   input  axi_resp_t  mst_resp_i   // AXI response signals from Slave
 );
