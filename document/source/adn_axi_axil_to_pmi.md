@@ -1,14 +1,12 @@
-# adn_common_axil_to_pmi (module)
+# adn_axi_axil_to_pmi (module)
 
 ### Author: Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)
 
-### Source: adn_common_axil_to_pmi.sv
+### Source: adn_axi_axil_to_pmi.sv
 
 ## Top IO
 
-<img src="./adn_common_axil_to_pmi_top.svg">
-
-<img src="./adn_common_axil_to_pmi_des.svg">
+<img src="./adn_axi_axil_to_pmi_top.svg">
 
 ## Parameters
 

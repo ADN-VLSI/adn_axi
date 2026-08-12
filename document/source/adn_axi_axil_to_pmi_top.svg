@@ -14,6 +14,6 @@
 <text x="347" y="235" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">m_pmi_req</text>
 <polygon points="352,295 372,295 382,285 402,285 402,295 402,305 382,305 372,295 352,295"/>
 <text x="347" y="285" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">m_pmi_resp</text>
-<text x="206" y="350" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_common_axil_to_pmi</text>
+<text x="206" y="350" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_axi_axil_to_pmi</text>
 </g>
 </svg>
