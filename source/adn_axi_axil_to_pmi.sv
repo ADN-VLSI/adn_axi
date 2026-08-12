@@ -18,7 +18,7 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
-module adn_common_axil_to_pmi #(
+module adn_axi_axil_to_pmi #(
 
     // Width of the address bus
     parameter int ADDR_WIDTH = `ADDR_WIDTH,
