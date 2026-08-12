@@ -87,7 +87,7 @@ See LICENSE file in the project root for full license information
 `define DATA_WIDTH 32
 `endif
 
-module adn_common_axil_to_pmi_tb;
+module adn_axi_axil_to_pmi_tb;
 
     `include "vip/adn_common_tb_headers.sv"
 
@@ -148,7 +148,7 @@ module adn_common_axil_to_pmi_tb;
         @(posedge clk);
     endtask
 
-    adn_common_axil_to_pmi #(
+    adn_axi_axil_to_pmi #(
         .ADDR_WIDTH (ADDR_WIDTH),
         .DATA_WIDTH (DATA_WIDTH),
         .FIFO_DEPTH (FIFO_DEPTH)
