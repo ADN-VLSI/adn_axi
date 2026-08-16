@@ -12,9 +12,11 @@
 
 |Name|Type|Dimension|Default|Description|
 |-|-|-|-|-|
-|ADDR_WIDTH|int||`ADDR_WIDTH|Width of the address bus|
-|DATA_WIDTH|int||`DATA_WIDTH|Width of the data bus|
-|FIFO_DEPTH|int||8|Depth of the internal transaction FIFOs|
+|axil_req_t|type||logic||
+|axil_rsp_t|type||logic||
+|pmi_req_t|type||logic||
+|pmi_rsp_t|type||logic||
+|FIFO_DEPTH|int||8||
 
 
 ## Ports
@@ -24,9 +26,9 @@
 |clk|input|logic||Clock input|
 |arst_n|input|logic||Active-low asynchronous reset|
 |s_axil_req|input|axil_req_t||AXI-Lite slave request interface|
-|s_axil_resp|output|axil_resp_t||AXI-Lite slave response interface|
+|s_axil_rsp|output|axil_rsp_t||AXI-Lite slave response interface|
 |m_pmi_req|output|pmi_req_t||PMI master request interface|
-|m_pmi_resp|input|pmi_resp_t||PMI master response interface|
+|m_pmi_rsp|input|pmi_rsp_t||PMI master response interface|
 
 
 ## Description

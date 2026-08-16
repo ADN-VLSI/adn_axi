@@ -32,7 +32,7 @@
 |mstrb|input|logic [STRB_WIDTH-1:0]||Write strobe|
 |mgnt|output|logic||Grant signal to PMI master|
 |mack|output|logic||Acknowledge signal to PMI master|
-|mresp|output|logic [ 1:0]||Response status (OKAY, SLVERR, etc.)|
+|mrsp|output|logic [ 1:0]||Response status (OKAY, SLVERR, etc.)|
 |mrdata|output|logic [DATA_WIDTH-1:0]||Read data bus|
 |aw_addr|output|logic [ADDR_WIDTH-1:0]||AXI write address|
 |aw_prot|output|logic [ 2:0]||AXI protection type|
@@ -42,7 +42,7 @@
 |w_strb|output|logic [STRB_WIDTH-1:0]||AXI write strobe|
 |w_valid|output|logic||AXI write valid|
 |w_ready|input|logic||AXI write ready|
-|b_resp|input|logic [ 1:0]||AXI write response|
+|b_rsp|input|logic [ 1:0]||AXI write response|
 |b_valid|input|logic||AXI write response valid|
 |b_ready|output|logic||AXI write response ready|
 |ar_addr|output|logic [ADDR_WIDTH-1:0]||AXI read address|
@@ -50,7 +50,7 @@
 |ar_valid|output|logic||AXI read address valid|
 |ar_ready|input|logic||AXI read address ready|
 |r_data|input|logic [DATA_WIDTH-1:0]||AXI read data|
-|r_resp|input|logic [ 1:0]||AXI read response|
+|r_rsp|input|logic [ 1:0]||AXI read response|
 |r_valid|input|logic||AXI read valid|
 |r_ready|output|logic||AXI read ready|
 

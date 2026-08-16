@@ -21,11 +21,11 @@
 <polygon points="10,545 20,535 40,535 40,545 60,545 40,545 40,555 20,555 10,545"/>
 <text x="65" y="535" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mack</text>
 <polygon points="10,595 20,585 40,585 40,595 60,595 40,595 40,605 20,605 10,595"/>
-<text x="65" y="585" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mresp</text>
+<text x="65" y="585" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mrsp</text>
 <polygon points="10,645 20,635 40,635 40,645 60,645 40,645 40,655 20,655 10,645"/>
 <text x="65" y="635" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mrdata</text>
 <polygon points="10,745 10,735 30,735 40,745 60,745 40,745 30,755 10,755 10,745"/>
-<text x="65" y="735" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">b_resp</text>
+<text x="65" y="735" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">b_rsp</text>
 <polygon points="10,795 10,785 30,785 40,795 60,795 40,795 30,805 10,805 10,795"/>
 <text x="65" y="785" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">b_valid</text>
 <polygon points="10,845 20,835 40,835 40,845 60,845 40,845 40,855 20,855 10,845"/>
@@ -33,7 +33,7 @@
 <polygon points="10,945 10,935 30,935 40,945 60,945 40,945 30,955 10,955 10,945"/>
 <text x="65" y="935" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_data</text>
 <polygon points="10,995 10,985 30,985 40,995 60,995 40,995 30,1005 10,1005 10,995"/>
-<text x="65" y="985" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_resp</text>
+<text x="65" y="985" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_rsp</text>
 <polygon points="10,1045 10,1035 30,1035 40,1045 60,1045 40,1045 30,1055 10,1055 10,1045"/>
 <text x="65" y="1035" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_valid</text>
 <polygon points="10,1095 20,1085 40,1085 40,1095 60,1095 40,1095 40,1105 20,1105 10,1095"/>

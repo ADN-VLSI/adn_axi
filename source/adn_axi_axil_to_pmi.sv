@@ -19,7 +19,6 @@ See LICENSE file in the project root for full license information
 
 */
 
-// @foez-bhai, add comments
 module adn_axi_axil_to_pmi #(
     parameter type axil_req_t = logic,
     parameter type axil_rsp_t = logic,
