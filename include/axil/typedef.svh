@@ -95,10 +95,10 @@ See LICENSE file in the project root for full license information
   } ``__NM__``_req_t;                            \
 
 
-// Macro: AXIL_RESP_T
+// Macro: AXIL_RSP_T
 // Purpose: Aggregates all AXI4-Lite response-side channels (B, R) into a single packed struct.
 // Use Case: Simplifies interface port declarations by bundling all response signals into one structure.
-`define AXIL_RESP_T(__NM__, __DW__)              \
+`define AXIL_RSP_T(__NM__, __DW__)              \
   `AXIL_B_T(``__NM__``)                          \
   `AXIL_R_T(``__NM__``, ``__DW__``)              \
                                                  \
@@ -110,7 +110,7 @@ See LICENSE file in the project root for full license information
     logic            ar_ready;                   \
     ``__NM__``_r_t   r;                          \
     logic            r_valid;                    \
-  } ``__NM__``_resp_t;                           \
+  } ``__NM__``_rsp_t;                           \
 
 
 // Macro: AXIL_T
@@ -118,7 +118,7 @@ See LICENSE file in the project root for full license information
 // Use Case: Provides a single point of instantiation for a full AXI4-Lite interface bundle.
 `define AXIL_T(__NM__, __AW__, __DW__)            \
   `AXIL_REQ_T(``__NM__``, ``__AW__``, ``__DW__``) \
-  `AXIL_RESP_T(``__NM__``, ``__DW__``)            \
+  `AXIL_RSP_T(``__NM__``, ``__DW__``)            \
 
 
 `endif

@@ -139,7 +139,7 @@ See LICENSE file in the project root for full license information
   @brief Generates a combined AXI response structure containing B and R channels.
   @usecase Used to bundle all AXI response signals into a single packed struct for simplified port mapping.
 */
-`define AXI_RESP_T(__NM__, __IW__, __DW__, __UW__)              \
+`define AXI_RSP_T(__NM__, __IW__, __DW__, __UW__)              \
   `AXI_B_T(``__NM__``, ``__IW__``, ``__UW__``)                  \
   `AXI_R_T(``__NM__``, ``__IW__``, ``__DW__``, ``__UW__``)      \
                                                                 \
@@ -151,7 +151,7 @@ See LICENSE file in the project root for full license information
     logic            ar_ready;                                  \
     ``__NM__``_r_t   r;                                         \
     logic            r_valid;                                   \
-  } ``__NM__``_resp_t;                                          \
+  } ``__NM__``_rsp_t;                                          \
 
 
 /*
@@ -160,7 +160,7 @@ See LICENSE file in the project root for full license information
 */
 `define AXI_T(__NM__, __IW__, __AW__, __DW__, __UW__)                    \
   `AXI_REQ_T(``__NM__``, ``__IW__``, ``__AW__``, ``__DW__``, ``__UW__``) \
-  `AXI_RESP_T(``__NM__``, ``__IW__``, ``__DW__``, ``__UW__``)            \
+  `AXI_RSP_T(``__NM__``, ``__IW__``, ``__DW__``, ``__UW__``)            \
 
 
 `endif

@@ -43,7 +43,7 @@ See LICENSE file in the project root for full license information
 // =============================================================================
 // adn_axi_pmi_to_axil
 // -----------------------------------------------------------------------------
-// PMI slave port (mreq/mgnt/maddr/mwe/mwdata/mstrb -> mack/mresp/mrdata)
+// PMI slave port (mreq/mgnt/maddr/mwe/mwdata/mstrb -> mack/mrsp/mrdata)
 // bridged to an AXI4-Lite master port.
 //
 // Single transaction outstanding at a time: a new PMI request is only
@@ -69,7 +69,7 @@ module adn_axi_pmi_to_axil #(
   input  logic [STRB_WIDTH-1:0] mstrb,    // Write strobe
   output logic                  mgnt,     // Grant signal to PMI master
   output logic                  mack,     // Acknowledge signal to PMI master
-  output logic [           1:0] mresp,    // Response status (OKAY, SLVERR, etc.)
+  output logic [           1:0] mrsp,    // Response status (OKAY, SLVERR, etc.)
   output logic [DATA_WIDTH-1:0] mrdata,   // Read data bus
 
   // ---------------- AXI4-Lite master port : AW ----------------
@@ -85,7 +85,7 @@ module adn_axi_pmi_to_axil #(
   input  logic                  w_ready,  // AXI write ready
 
   // ---------------- AXI4-Lite master port : B ----------------
-  input  logic [           1:0] b_resp,   // AXI write response
+  input  logic [           1:0] b_rsp,   // AXI write response
   input  logic                  b_valid,  // AXI write response valid
   output logic                  b_ready,  // AXI write response ready
 
@@ -97,7 +97,7 @@ module adn_axi_pmi_to_axil #(
 
   // ---------------- AXI4-Lite master port : R ----------------
   input  logic [DATA_WIDTH-1:0] r_data,   // AXI read data
-  input  logic [           1:0] r_resp,   // AXI read response
+  input  logic [           1:0] r_rsp,   // AXI read response
   input  logic                  r_valid,  // AXI read valid
   output logic                  r_ready   // AXI read ready
 );
@@ -129,16 +129,16 @@ module adn_axi_pmi_to_axil #(
 
   // AXI4-Lite and PMI request / response structs (internal usage)
   axil_m_req_t            axil_req_s;
-  axil_m_resp_t           axil_resp_s;
+  axil_m_rsp_t           axil_rsp_s;
   pmi_req_t               pmi_req_s;
-  pmi_resp_t              pmi_resp_s;
+  pmi_rsp_t              pmi_rsp_s;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // ASSIGNMENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////
   logic accept;           // Handshake: mreq & mgnt this cycle
   logic addr_phase_done;  // Address/Data phase completion status
-  logic resp_done;        // Response phase completion status
+  logic rsp_done;        // Response phase completion status
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // METHODS
@@ -170,32 +170,32 @@ module adn_axi_pmi_to_axil #(
   assign pmi_req_s.mstrb  = wstrb_q;
   assign pmi_req_s.mreq   = accept;
 
-  assign pmi_resp_s.mgnt  = mgnt;
-  assign pmi_resp_s.mack  = mack;
-  assign pmi_resp_s.mrdata = mrdata;
-  assign pmi_resp_s.mresp = mresp[0];
+  assign pmi_rsp_s.mgnt  = mgnt;
+  assign pmi_rsp_s.mack  = mack;
+  assign pmi_rsp_s.mrdata = mrdata;
+  assign pmi_rsp_s.mrsp = mrsp[0];
 
   // B / R channel readiness - driven by bridge state
   assign axil_req_s.b_ready  = (state_q == S_RESP) &  is_write_q;
   assign axil_req_s.r_ready  = (state_q == S_RESP) & ~is_write_q;
 
   // Map scalar response ports into the internal AXIL response struct
-  assign axil_resp_s.aw_ready = aw_ready;
-  assign axil_resp_s.w_ready  = w_ready;
-  assign axil_resp_s.b.resp   = b_resp;
-  assign axil_resp_s.b_valid  = b_valid;
-  assign axil_resp_s.ar_ready = ar_ready;
-  assign axil_resp_s.r.data   = r_data;
-  assign axil_resp_s.r.resp   = r_resp;
-  assign axil_resp_s.r_valid  = r_valid;
+  assign axil_rsp_s.aw_ready = aw_ready;
+  assign axil_rsp_s.w_ready  = w_ready;
+  assign axil_rsp_s.b.rsp   = b_rsp;
+  assign axil_rsp_s.b_valid  = b_valid;
+  assign axil_rsp_s.ar_ready = ar_ready;
+  assign axil_rsp_s.r.data   = r_data;
+  assign axil_rsp_s.r.rsp   = r_rsp;
+  assign axil_rsp_s.r_valid  = r_valid;
 
   // PMI response port (driven from internal AXIL response struct)
-  assign resp_done = is_write_q ? (axil_resp_s.b_valid & axil_req_s.b_ready)
-                               : (axil_resp_s.r_valid & axil_req_s.r_ready);
+  assign rsp_done = is_write_q ? (axil_rsp_s.b_valid & axil_req_s.b_ready)
+                               : (axil_rsp_s.r_valid & axil_req_s.r_ready);
 
-  assign mack   = (state_q == S_RESP) & resp_done;
-  assign mresp  = is_write_q ? axil_resp_s.b.resp : axil_resp_s.r.resp;
-  assign mrdata = axil_resp_s.r.data;  // don't-care / 0 during writes, real data during reads
+  assign mack   = (state_q == S_RESP) & rsp_done;
+  assign mrsp  = is_write_q ? axil_rsp_s.b.rsp : axil_rsp_s.r.rsp;
+  assign mrdata = axil_rsp_s.r.data;  // don't-care / 0 during writes, real data during reads
 
   // Map internal request struct fields to scalar AXIL master output ports
   assign aw_addr  = axil_req_s.aw.addr;
@@ -220,7 +220,7 @@ module adn_axi_pmi_to_axil #(
     unique case (state_q)
       S_IDLE:      if (accept)          state_d = S_ADDR_DATA;
       S_ADDR_DATA: if (addr_phase_done) state_d = S_RESP;
-      S_RESP:      if (resp_done)       state_d = S_IDLE;
+      S_RESP:      if (rsp_done)       state_d = S_IDLE;
       default:                          state_d = S_IDLE;
     endcase
   end
@@ -297,7 +297,7 @@ endmodule
 // If multiple outstanding transactions are actually needed for throughput,
 // the correct extension is two independent outstanding-counters (one per
 // AXI channel, not one shared FIFO) to generate b_ready/r_ready, plus a
-// small in-order completion buffer in front of mack/mresp/mrdata so that
+// small in-order completion buffer in front of mack/mrsp/mrdata so that
 // an early response can be held until it's actually its turn to be
 // reported on the single, non-tagged PMI response port. Happy to write that
 // version if you need the extra pipelining.

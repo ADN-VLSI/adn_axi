@@ -25,7 +25,7 @@ See LICENSE file in the project root for full license information
 module adn_axi_fifo #(
   // PARAMETERS
   parameter type axi_req_t    = logic,      // AXI request structure type
-  parameter type axi_resp_t   = logic,      // AXI response structure type
+  parameter type axi_rsp_t   = logic,      // AXI response structure type
   parameter int  FIFO_SIZE    = 4,          // Default FIFO depth for all channels
   parameter int  AW_FIFO_SIZE = FIFO_SIZE,  // Write Address channel FIFO depth
   parameter int  W_FIFO_SIZE  = FIFO_SIZE,  // Write Data channel FIFO depth
@@ -38,10 +38,10 @@ module adn_axi_fifo #(
   input  logic       arst_ni,     // Asynchronous reset, active low
 
   input  axi_req_t   slv_req_i,   // AXI request signals from Master
-  output axi_resp_t  slv_resp_o,  // AXI response signals to Master
+  output axi_rsp_t  slv_rsp_o,  // AXI response signals to Master
 
   output axi_req_t   mst_req_o,   // AXI request signals to Slave
-  input  axi_resp_t  mst_resp_i   // AXI response signals from Slave
+  input  axi_rsp_t  mst_rsp_i   // AXI response signals from Slave
 );
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,9 +55,9 @@ module adn_axi_fifo #(
   // Extracting AXI channel types from the request/response structures
   typedef type(slv_req_i.aw)  axi_aw_t;
   typedef type(slv_req_i.w)   axi_w_t;
-  typedef type(mst_resp_i.b)  axi_b_t;
+  typedef type(mst_rsp_i.b)  axi_b_t;
   typedef type(slv_req_i.ar)  axi_ar_t;
-  typedef type(mst_resp_i.r)  axi_r_t;
+  typedef type(mst_rsp_i.r)  axi_r_t;
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // SIGNALS
@@ -80,14 +80,14 @@ module adn_axi_fifo #(
   always_comb w_in_flat = slv_req_i.w;
   always_comb mst_req_o.w = axi_w_t'(w_out_flat);
 
-  always_comb b_in_flat = mst_resp_i.b;
-  always_comb slv_resp_o.b = axi_b_t'(b_out_flat);
+  always_comb b_in_flat = mst_rsp_i.b;
+  always_comb slv_rsp_o.b = axi_b_t'(b_out_flat);
 
   always_comb ar_in_flat = slv_req_i.ar;
   always_comb mst_req_o.ar = axi_ar_t'(ar_out_flat);
 
-  always_comb r_in_flat = mst_resp_i.r;
-  always_comb slv_resp_o.r = axi_r_t'(r_out_flat);
+  always_comb r_in_flat = mst_rsp_i.r;
+  always_comb slv_rsp_o.r = axi_r_t'(r_out_flat);
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // SUBMODULES
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,11 +101,11 @@ module adn_axi_fifo #(
       .clk_i           (clk_i),
       .data_in_i       (aw_in_flat),
       .data_in_valid_i (slv_req_i.aw_valid),
-      .data_in_ready_o (slv_resp_o.aw_ready),
+      .data_in_ready_o (slv_rsp_o.aw_ready),
       .count_o         (),
       .data_out_o      (aw_out_flat),
       .data_out_valid_o(mst_req_o.aw_valid),
-      .data_out_ready_i(mst_resp_i.aw_ready)
+      .data_out_ready_i(mst_rsp_i.aw_ready)
   );
 
   // W channel FIFO: Buffers Write Data from Master to Slave
@@ -118,11 +118,11 @@ module adn_axi_fifo #(
       .clk_i           (clk_i),
       .data_in_i       (w_in_flat),
       .data_in_valid_i (slv_req_i.w_valid),
-      .data_in_ready_o (slv_resp_o.w_ready),
+      .data_in_ready_o (slv_rsp_o.w_ready),
       .count_o         (),
       .data_out_o      (w_out_flat),
       .data_out_valid_o(mst_req_o.w_valid),
-      .data_out_ready_i(mst_resp_i.w_ready)
+      .data_out_ready_i(mst_rsp_i.w_ready)
   );
 
   // B channel FIFO: Buffers Write Response from Slave to Master
@@ -134,11 +134,11 @@ module adn_axi_fifo #(
       .arst_ni         (arst_ni),
       .clk_i           (clk_i),
       .data_in_i       (b_in_flat),
-      .data_in_valid_i (mst_resp_i.b_valid),
+      .data_in_valid_i (mst_rsp_i.b_valid),
       .data_in_ready_o (mst_req_o.b_ready),
       .count_o         (),
       .data_out_o      (b_out_flat),
-      .data_out_valid_o(slv_resp_o.b_valid),
+      .data_out_valid_o(slv_rsp_o.b_valid),
       .data_out_ready_i(slv_req_i.b_ready)
   );
 
@@ -152,11 +152,11 @@ module adn_axi_fifo #(
       .clk_i           (clk_i),
       .data_in_i       (ar_in_flat),
       .data_in_valid_i (slv_req_i.ar_valid),
-      .data_in_ready_o (slv_resp_o.ar_ready),
+      .data_in_ready_o (slv_rsp_o.ar_ready),
       .count_o         (),
       .data_out_o      (ar_out_flat),
       .data_out_valid_o(mst_req_o.ar_valid),
-      .data_out_ready_i(mst_resp_i.ar_ready)
+      .data_out_ready_i(mst_rsp_i.ar_ready)
   );
 
   // R channel FIFO: Buffers Read Data from Slave to Master
@@ -168,11 +168,11 @@ module adn_axi_fifo #(
       .arst_ni         (arst_ni),
       .clk_i           (clk_i),
       .data_in_i       (r_in_flat),
-      .data_in_valid_i (mst_resp_i.r_valid),
+      .data_in_valid_i (mst_rsp_i.r_valid),
       .data_in_ready_o (mst_req_o.r_ready),
       .count_o         (),
       .data_out_o      (r_out_flat),
-      .data_out_valid_o(slv_resp_o.r_valid),
+      .data_out_valid_o(slv_rsp_o.r_valid),
       .data_out_ready_i(slv_req_i.r_ready)
   );
   //////////////////////////////////////////////////////////////////////////////////////////////////

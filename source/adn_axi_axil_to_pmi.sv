@@ -18,15 +18,14 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
+
+// @foez-bhai, add comments
 module adn_axi_axil_to_pmi #(
-
-    // Width of the address bus
-    parameter int ADDR_WIDTH = `ADDR_WIDTH,
-    // Width of the data bus
-    parameter int DATA_WIDTH = `DATA_WIDTH,
-    // Depth of the internal transaction FIFOs
-    parameter int FIFO_DEPTH = 8
-
+    parameter type axil_req_t = logic,
+    parameter type axil_rsp_t = logic,
+    parameter type pmi_req_t  = logic,
+    parameter type pmi_rsp_t  = logic,
+    parameter int  FIFO_DEPTH = 8
 ) (
     //////////////////////////////////////////////////////////////////////////////////////////////
     // GLOBAL
@@ -43,9 +42,9 @@ module adn_axi_axil_to_pmi #(
     //////////////////////////////////////////////////////////////////////////////////////////////
 
     // AXI-Lite slave request interface
-    input axil_req_t s_axil_req,
+    input  axil_req_t s_axil_req,
     // AXI-Lite slave response interface
-    output axil_resp_t s_axil_resp,
+    output axil_rsp_t s_axil_rsp,
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,13 +54,20 @@ module adn_axi_axil_to_pmi #(
     // PMI master request interface
     output pmi_req_t m_pmi_req,
     // PMI master response interface
-    input pmi_resp_t m_pmi_resp
+    input  pmi_rsp_t m_pmi_rsp
 
 );
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // LOCALPARAMS GENERATED
   //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Address width
+  localparam int ADDR_WIDTH = $bits(s_axil_req.aw.addr);
+
+
+  // Data width
+  localparam int DATA_WIDTH = $bits(s_axil_req.w.data);
 
   // Byte strobe width
   localparam int STRB_WIDTH = DATA_WIDTH / 8;
@@ -249,10 +255,10 @@ module adn_axi_axil_to_pmi #(
   assign aw_accept = arst_n && s_axil_req.aw_valid && s_axil_resp.aw_ready;
 
 
-  assign w_accept = arst_n && s_axil_req.w_valid && s_axil_resp.w_ready;
+  assign w_accept = arst_n && s_axil_req.w_valid && s_axil_rsp.w_ready;
 
 
-  assign ar_accept = arst_n && s_axil_req.ar_valid && s_axil_resp.ar_ready;
+  assign ar_accept = arst_n && s_axil_req.ar_valid && s_axil_rsp.ar_ready;
 
 
 
@@ -282,7 +288,7 @@ module adn_axi_axil_to_pmi #(
 
 
   // PMI request acceptance
-  assign pmi_accept = arst_n && pmi_req_valid && m_pmi_resp.mgnt;
+  assign pmi_accept = arst_n && pmi_req_valid && m_pmi_rsp.mgnt;
 
 
 
@@ -296,18 +302,18 @@ module adn_axi_axil_to_pmi #(
 
 
 
-  assign out_pop = arst_n && m_pmi_resp.mack && (out_count != 0) && (!rsp_full || response_pop);
+  assign out_pop = arst_n && m_pmi_rsp.mack && (out_count != 0) && (!rsp_full || response_pop);
 
 
 
   // PMI response is stored only when the response FIFO can accept it.
-  assign response_do_push = arst_n && m_pmi_resp.mack && (out_count != 0) &&
+  assign response_do_push = arst_n && m_pmi_rsp.mack && (out_count != 0) &&
                             (!rsp_full || response_pop);
 
   // AXI response FIFO consumption
   assign response_pop = !rsp_empty && (
-      (response_fifo[rsp_rd_ptr].write && s_axil_resp.b_valid && s_axil_req.b_ready) ||
-      (!response_fifo[rsp_rd_ptr].write && s_axil_resp.r_valid && s_axil_req.r_ready)
+      (response_fifo[rsp_rd_ptr].write && s_axil_rsp.b_valid && s_axil_req.b_ready) ||
+      (!response_fifo[rsp_rd_ptr].write && s_axil_rsp.r_valid && s_axil_req.r_ready)
     );
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -334,19 +340,19 @@ module adn_axi_axil_to_pmi #(
   // AXI-Lite ready and response generation
   always_comb begin
 
-    s_axil_resp = '0;
+    s_axil_rsp = '0;
 
 
     if (arst_n) begin
 
 
       // Accept AXI write address when no address is buffered
-      s_axil_resp.aw_ready = !aw_valid_hold;
+      s_axil_rsp.aw_ready = !aw_valid_hold;
 
 
 
       // Accept AXI write data when no data is buffered
-      s_axil_resp.w_ready  = !w_valid_hold;
+      s_axil_rsp.w_ready  = !w_valid_hold;
 
 
 
@@ -358,16 +364,16 @@ module adn_axi_axil_to_pmi #(
       // decremented only when the PMI request is actually granted.
       if (txn_full) begin
 
-        s_axil_resp.ar_ready = 1'b0;
+        s_axil_rsp.ar_ready = 1'b0;
 
       end else if (write_push && (txn_count == COUNT_WIDTH'(FIFO_DEPTH - 1))) begin
 
         // Reserve the final request FIFO entry for the completed write.
-        s_axil_resp.ar_ready = 1'b0;
+        s_axil_rsp.ar_ready = 1'b0;
 
       end else begin
 
-        s_axil_resp.ar_ready = 1'b1;
+        s_axil_rsp.ar_ready = 1'b1;
 
       end
 
@@ -381,23 +387,23 @@ module adn_axi_axil_to_pmi #(
 
 
           // PMI write completion -> AXI B response
-          s_axil_resp.b_valid = 1'b1;
+          s_axil_rsp.b_valid = 1'b1;
 
 
-          s_axil_resp.b.resp  = response_fifo[rsp_rd_ptr].resp;
+          s_axil_rsp.b.resp  = response_fifo[rsp_rd_ptr].resp;
 
 
         end else begin
 
 
           // PMI read completion -> AXI R response
-          s_axil_resp.r_valid = 1'b1;
+          s_axil_rsp.r_valid = 1'b1;
 
 
-          s_axil_resp.r.data  = response_fifo[rsp_rd_ptr].data;
+          s_axil_rsp.r.data  = response_fifo[rsp_rd_ptr].data;
 
 
-          s_axil_resp.r.resp  = response_fifo[rsp_rd_ptr].resp;
+          s_axil_rsp.r.resp  = response_fifo[rsp_rd_ptr].resp;
 
 
         end
@@ -733,8 +739,8 @@ module adn_axi_axil_to_pmi #(
       if (response_do_push) begin
 
         response_fifo[rsp_wr_ptr].write <= response_write;
-        response_fifo[rsp_wr_ptr].data <= m_pmi_resp.mrdata;
-        response_fifo[rsp_wr_ptr].resp <= m_pmi_resp.mresp ? 2'b10 : 2'b00;
+        response_fifo[rsp_wr_ptr].data <= m_pmi_rsp.mrdata;
+        response_fifo[rsp_wr_ptr].resp <= m_pmi_rsp.mrsp ? 2'b10 : 2'b00;
 
         rsp_wr_ptr <= ptr_inc(rsp_wr_ptr);
 
