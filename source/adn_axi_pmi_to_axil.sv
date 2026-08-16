@@ -1,7 +1,16 @@
 /*
+Module: adn_axi_pmi_to_axil
+Purpose:
+This module acts as a protocol bridge, converting simple PMI-style (Processor Memory Interface) 
+slave requests into AXI4-Lite master transactions. It enables legacy or simplified 
+peripheral interfaces to communicate with AXI4-Lite compliant interconnects or slaves.
 
-// @foez-bhai, add description of the module, its purpose, and use case, 
-// @foez-bhai, update table 
+Use Case:
+This is intended for system-on-chip (SoC) designs where a lightweight, non-pipelined 
+register access bus (PMI) needs to interface with standard AXI4-Lite peripherals. 
+It is ideal for control-plane register access where transaction throughput is 
+secondary to simplicity and compatibility.
+
 Purpose
 -------
 Bridge from a simple PMI-style slave port (mreq/mwe/maddr/...) to an
@@ -18,6 +27,7 @@ AXI4-Lite master to talk to peripheral registers.
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
 | 0.1      | 2026-08-13 | Motasim Faiyaz | Initial version (refactor to use typedef structs)      |
+| 0.2      | 2026-08-14 | Motasim Faiyaz | Updated documentation and parameter descriptions       |
 
 Author : Motasim Faiyaz (motasimfaiyaz@gmail.com)
 This file is part of ADN-VLSI/adn_axi
@@ -29,10 +39,6 @@ See LICENSE file in the project root for full license information
 
 `include "axil/typedef.svh"
 `include "pmi/typedef.svh"
-
-// @foez-bhai, add comments to the parameters, ports
-// @foez-bhai, add comments to the functional blocks, signals, and submodules
-
 
 // =============================================================================
 // adn_axi_pmi_to_axil
@@ -48,53 +54,52 @@ See LICENSE file in the project root for full license information
 // =============================================================================
 
 module adn_axi_pmi_to_axil #(
-  
-  parameter int ADDR_WIDTH = 32,
-  parameter int DATA_WIDTH = 32,
-  parameter int STRB_WIDTH = DATA_WIDTH / 8
+  parameter int ADDR_WIDTH = 32,          // Width of the address bus
+  parameter int DATA_WIDTH = 32,          // Width of the data bus
+  parameter int STRB_WIDTH = DATA_WIDTH / 8 // Width of the write strobe signal
 ) (
-  input  logic                  clk,
-  input  logic                  rst_n,          // async, active-low
+  input  logic                  clk,      // System clock
+  input  logic                  rst_n,    // Asynchronous, active-low reset
 
   // ---------------- PMI slave port ----------------
-  input  logic                  mreq,
-  input  logic                  mwe,            // 1 = write, 0 = read
-  input  logic [ADDR_WIDTH-1:0] maddr,
-  input  logic [DATA_WIDTH-1:0] mwdata,
-  input  logic [STRB_WIDTH-1:0] mstrb,
-  output logic                  mgnt,
-  output logic                  mack,
-  output logic [           1:0] mresp,
-  output logic [DATA_WIDTH-1:0] mrdata,
+  input  logic                  mreq,     // Request signal from PMI master
+  input  logic                  mwe,      // Write enable: 1 for write, 0 for read
+  input  logic [ADDR_WIDTH-1:0] maddr,    // Address bus
+  input  logic [DATA_WIDTH-1:0] mwdata,   // Write data bus
+  input  logic [STRB_WIDTH-1:0] mstrb,    // Write strobe
+  output logic                  mgnt,     // Grant signal to PMI master
+  output logic                  mack,     // Acknowledge signal to PMI master
+  output logic [           1:0] mresp,    // Response status (OKAY, SLVERR, etc.)
+  output logic [DATA_WIDTH-1:0] mrdata,   // Read data bus
 
   // ---------------- AXI4-Lite master port : AW ----------------
-  output logic [ADDR_WIDTH-1:0] aw_addr,
-  output logic [           2:0] aw_prot,
-  output logic                  aw_valid,
-  input  logic                  aw_ready,
+  output logic [ADDR_WIDTH-1:0] aw_addr,  // AXI write address
+  output logic [           2:0] aw_prot,  // AXI protection type
+  output logic                  aw_valid, // AXI write address valid
+  input  logic                  aw_ready, // AXI write address ready
 
   // ---------------- AXI4-Lite master port : W ----------------
-  output logic [DATA_WIDTH-1:0] w_data,
-  output logic [STRB_WIDTH-1:0] w_strb,
-  output logic                  w_valid,
-  input  logic                  w_ready,
+  output logic [DATA_WIDTH-1:0] w_data,   // AXI write data
+  output logic [STRB_WIDTH-1:0] w_strb,   // AXI write strobe
+  output logic                  w_valid,  // AXI write valid
+  input  logic                  w_ready,  // AXI write ready
 
   // ---------------- AXI4-Lite master port : B ----------------
-  input  logic [           1:0] b_resp,
-  input  logic                  b_valid,
-  output logic                  b_ready,
+  input  logic [           1:0] b_resp,   // AXI write response
+  input  logic                  b_valid,  // AXI write response valid
+  output logic                  b_ready,  // AXI write response ready
 
   // ---------------- AXI4-Lite master port : AR ----------------
-  output logic [ADDR_WIDTH-1:0] ar_addr,
-  output logic [           2:0] ar_prot,
-  output logic                  ar_valid,
-  input  logic                  ar_ready,
+  output logic [ADDR_WIDTH-1:0] ar_addr,  // AXI read address
+  output logic [           2:0] ar_prot,  // AXI read protection type
+  output logic                  ar_valid, // AXI read address valid
+  input  logic                  ar_ready, // AXI read address ready
 
   // ---------------- AXI4-Lite master port : R ----------------
-  input  logic [DATA_WIDTH-1:0] r_data,
-  input  logic [           1:0] r_resp,
-  input  logic                  r_valid,
-  output logic                  r_ready
+  input  logic [DATA_WIDTH-1:0] r_data,   // AXI read data
+  input  logic [           1:0] r_resp,   // AXI read response
+  input  logic                  r_valid,  // AXI read valid
+  output logic                  r_ready   // AXI read ready
 );
 
   // Instantiate common request/response typedefs for use inside the module
@@ -111,16 +116,16 @@ module adn_axi_pmi_to_axil #(
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // SIGNALS
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  logic [1:0]             state_q, state_d;
+  logic [1:0]             state_q, state_d; // FSM state registers
 
-  logic                   is_write_q;          // latched transaction type
-  logic [ADDR_WIDTH-1:0]  addr_q;
-  logic [DATA_WIDTH-1:0]  wdata_q;
-  logic [STRB_WIDTH-1:0]  wstrb_q;
+  logic                   is_write_q;          // Latched transaction type: 1=Write, 0=Read
+  logic [ADDR_WIDTH-1:0]  addr_q;              // Latched address
+  logic [DATA_WIDTH-1:0]  wdata_q;             // Latched write data
+  logic [STRB_WIDTH-1:0]  wstrb_q;             // Latched write strobe
 
-  logic                   aw_pend_q, aw_pend_d; // sticky-valid until aw_ready
-  logic                   w_pend_q,  w_pend_d;  // sticky-valid until w_ready
-  logic                   ar_pend_q, ar_pend_d; // sticky-valid until ar_ready
+  logic                   aw_pend_q, aw_pend_d; // Sticky-valid for AW channel
+  logic                   w_pend_q,  w_pend_d;  // Sticky-valid for W channel
+  logic                   ar_pend_q, ar_pend_d; // Sticky-valid for AR channel
 
   // AXI4-Lite and PMI request / response structs (internal usage)
   axil_m_req_t            axil_req_s;
@@ -131,9 +136,9 @@ module adn_axi_pmi_to_axil #(
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // ASSIGNMENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  logic accept;           // mreq & mgnt this cycle
-  logic addr_phase_done;  // both AW & W done (write) / AR done (read)
-  logic resp_done;        // matching B or R handshake completed
+  logic accept;           // Handshake: mreq & mgnt this cycle
+  logic addr_phase_done;  // Address/Data phase completion status
+  logic resp_done;        // Response phase completion status
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // METHODS
@@ -238,7 +243,7 @@ module adn_axi_pmi_to_axil #(
   end
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // METHODS
+  // SEQUENTIAL LOGIC
   //////////////////////////////////////////////////////////////////////////////////////////////////
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
