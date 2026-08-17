@@ -78,10 +78,10 @@ module adn_axi_axil_to_dual_pmi #(
   always_comb pmi_req_wr_o.mwe    = '1;
 
   // Mapping AXI Read Address to PMI Read Request port
-  always_comb pmi_req_rd_i.maddr  = axil_req_i.ar.addr;
-  always_comb pmi_req_rd_i.mwdata = '0;   
-  always_comb pmi_req_rd_i.mstrb  = '0;   
-  always_comb pmi_req_rd_i.mwe    = 1'b0;
+  always_comb pmi_req_rd_o.maddr  = axil_req_i.ar.addr;
+  always_comb pmi_req_rd_o.mwdata = '0;   
+  always_comb pmi_req_rd_o.mstrb  = '0;   
+  always_comb pmi_req_rd_o.mwe    = 1'b0;
 
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +148,7 @@ module adn_axi_axil_to_dual_pmi #(
   ) rd_hs1 (
       .valid_i({axil_req_i.ar_valid}),
       .ready_o({axil_rsp_o.ar_ready}),
-      .valid_o({pmi_req_rd_i.mreq, rd_hs1_comb_valid_o}),
+      .valid_o({pmi_req_rd_o.mreq, rd_hs1_comb_valid_o}),
       .ready_i({pmi_rsp_rd_i.mgnt, rd_hs_coun_ready_o})
   );
 
