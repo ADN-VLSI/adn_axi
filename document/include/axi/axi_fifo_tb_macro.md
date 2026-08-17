@@ -17,9 +17,9 @@ __GUARD_AXI_TB_MACROS_SVH__
 |Name|Args|Description|Preview|
 |-|-|-|-|
 |GEN_DRIVE_REQ_TASK|CH, TYPE|================================================================== REQUEST-DIRECTION DRIVER  (AW, W, AR) ==================================================================|`define GEN_DRIVE_REQ_TASK(CH, TYPE)                                 task automatic drive_``CH``(TYPE item);                            @(posedge clk_i);|
-|GEN_DRIVE_RESP_TASK|CH, TYPE|================================================================== RESPONSE-DIRECTION DRIVER  (B, R channel) ==================================================================|`define GEN_DRIVE_RESP_TASK(CH, TYPE)                                task automatic drive_``CH``(TYPE item);                            @(posedge clk_i);|
+|GEN_DRIVE_RSP_TASK|CH, TYPE|================================================================== RESPONSE-DIRECTION DRIVER  (B, R channel) ==================================================================|`define GEN_DRIVE_RSP_TASK(CH, TYPE)                                task automatic drive_``CH``(TYPE item);                            @(posedge clk_i);|
 |GEN_CHECK_REQ_TASK|CH, TYPE|================================================================== REQUEST-DIRECTION CHECKER  (output side = mst_req_o, AW/W/AR) ==================================================================|`define GEN_CHECK_REQ_TASK(CH, TYPE)                                  task automatic check_``CH``();                                      forever begin|
-|GEN_CHECK_RESP_TASK|CH, TYPE|================================================================== RESPONSE-DIRECTION CHECKER  (output side = slv_resp_o, B/R) ==================================================================|`define GEN_CHECK_RESP_TASK(CH, TYPE)                                task automatic check_``CH``();                                     forever begin|
+|GEN_CHECK_RSP_TASK|CH, TYPE|================================================================== RESPONSE-DIRECTION CHECKER  (output side = slv_rsp_o, B/R) ==================================================================|`define GEN_CHECK_RSP_TASK(CH, TYPE)                                task automatic check_``CH``();                                     forever begin|
 
 
 ## Description

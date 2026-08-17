@@ -10,7 +10,7 @@
     slv_req_i.``CH``       <= item;                                 \
     slv_req_i.``CH``_valid <= 1'b1;                                 \
     ``CH``_ref_q.push_back(item);                                   \
-    wait (slv_resp_o.``CH``_ready === 1'b1);                        \
+    wait (slv_rsp_o.``CH``_ready === 1'b1);                        \
     @(posedge clk_i);                                               \
     slv_req_i.``CH``_valid <= 1'b0;                                 \
   endtask
@@ -18,15 +18,15 @@
 //==================================================================
 // RESPONSE-DIRECTION DRIVER  (B, R channel)
 //==================================================================
-`define GEN_DRIVE_RESP_TASK(CH, TYPE)                               \
+`define GEN_DRIVE_RSP_TASK(CH, TYPE)                               \
   task automatic drive_``CH``(TYPE item);                           \
     @(posedge clk_i);                                               \
-    mst_resp_i.``CH``       <= item;                                \
-    mst_resp_i.``CH``_valid <= 1'b1;                                \
+    mst_rsp_i.``CH``       <= item;                                \
+    mst_rsp_i.``CH``_valid <= 1'b1;                                \
     ``CH``_ref_q.push_back(item);                                   \
     wait (mst_req_o.``CH``_ready === 1'b1);                         \
     @(posedge clk_i);                                               \
-    mst_resp_i.``CH``_valid <= 1'b0;                                \
+    mst_rsp_i.``CH``_valid <= 1'b0;                                \
   endtask
 
 //==================================================================
@@ -36,7 +36,7 @@
   task automatic check_``CH``();                                     \
     forever begin                                                    \
       @(posedge clk_i);                                              \
-      if (mst_req_o.``CH``_valid && mst_resp_i.``CH``_ready) begin   \
+      if (mst_req_o.``CH``_valid && mst_rsp_i.``CH``_ready) begin   \
         TYPE expected;                                               \
         expected = ``CH``_ref_q.pop_front();                         \
         if (mst_req_o.``CH`` !== expected)                           \
@@ -47,18 +47,18 @@
   endtask
 
 //==================================================================
-// RESPONSE-DIRECTION CHECKER  (output side = slv_resp_o, B/R)
+// RESPONSE-DIRECTION CHECKER  (output side = slv_rsp_o, B/R)
 //==================================================================
-`define GEN_CHECK_RESP_TASK(CH, TYPE)                               \
+`define GEN_CHECK_RSP_TASK(CH, TYPE)                               \
   task automatic check_``CH``();                                    \
     forever begin                                                   \
       @(posedge clk_i);                                             \
-      if (slv_resp_o.``CH``_valid && slv_req_i.``CH``_ready) begin  \
+      if (slv_rsp_o.``CH``_valid && slv_req_i.``CH``_ready) begin  \
         TYPE expected;                                              \
         expected = ``CH``_ref_q.pop_front();                        \
-        if (slv_resp_o.``CH`` !== expected)                         \
+        if (slv_rsp_o.``CH`` !== expected)                         \
           $error("[%s] mismatch: got %p expected %p",               \
-                  `"CH`", slv_resp_o.``CH``, expected);             \
+                  `"CH`", slv_rsp_o.``CH``, expected);             \
       end                                                           \
     end                                                             \
   endtask

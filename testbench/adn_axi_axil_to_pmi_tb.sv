@@ -7,7 +7,7 @@
 | TC_003    | 2026-08-10 | Motasim Faiyaz  | partial byte-strobe write must only update the enabled bytes.                          |
 | TC_004    | 2026-08-10 | Motasim Faiyaz  | outstanding-transaction depth stress                                                   |
 | TC_005    | 2026-08-10 | Motasim Faiyaz  | PMI grant backpressure.                                                                |
-| TC_006    | 2026-08-10 | Motasim Faiyaz  | PMI error response (mresp) must be visible on the AXI side as a non-OKAY response.     |
+| TC_006    | 2026-08-10 | Motasim Faiyaz  | PMI error response (mrsp) must be visible on the AXI side as a non-OKAY response.     |
 | TC_007    | 2026-08-10 | Motasim Faiyaz  | reset asserted mid-transaction must not hang the DUT or corrupt the next transaction.  |
 | TC_008    | 2026-08-10 | Motasim Faiyaz  | randomized read/write mix against a reference memory model, N transactions.            |
  
@@ -32,7 +32,7 @@ See LICENSE file in the project root for full license information
 // ------------------------------------------------------------------------------------------------
 // ASSUMPTIONS (read this before wiring into the real ADN flow):
 //
-//  1. axil_req_t / axil_resp_t come from the repository's AXIL_T typedef used by the DUT.
+//  1. axil_req_t / axil_rsp_t come from the repository's AXIL_T typedef used by the DUT.
 //     The resulting nested channel names must match the DUT interface.
 //
 //  2. `ADDR_WIDTH / `DATA_WIDTH are macros the DUT expects to already exist (used as parameter
@@ -44,7 +44,7 @@ See LICENSE file in the project root for full license information
 //       - DUT asserts mreq and holds maddr/mwe/mwdata/mstrb stable until mgnt is seen high
 //         in the same cycle (valid/ready-style acceptance, NOT a level-held "accepted" signal).
 //       - Once accepted, the memory model may take N cycles before returning mack=1 for exactly
-//         one cycle, together with mrdata (for reads) and mresp (error flag, active high).
+//         one cycle, together with mrdata (for reads) and mrsp (error flag, active high).
 //       - Multiple transactions can be in flight (this is what "Outstanding FIFO" in your diagram
 //         is for), and mack responses come back in the SAME ORDER requests were granted (FIFO).
 //     If your real PMI target (e.g. Lattice PMI / a specific memory generator) behaves
@@ -108,10 +108,10 @@ module adn_axi_axil_to_pmi_tb;
     logic arst_n;
 
     axil_req_t  s_axil_req;
-    axil_resp_t s_axil_resp;
+    axil_rsp_t s_axil_rsp;
 
     pmi_req_t  m_pmi_req;
-    pmi_resp_t m_pmi_resp;
+    pmi_rsp_t m_pmi_rsp;
 
     int pass_count = 0;
     int fail_count = 0;
@@ -156,9 +156,9 @@ module adn_axi_axil_to_pmi_tb;
         .clk         (clk),
         .arst_n      (arst_n),
         .s_axil_req  (s_axil_req),
-        .s_axil_resp (s_axil_resp),
+        .s_axil_rsp (s_axil_rsp),
         .m_pmi_req   (m_pmi_req),
-        .m_pmi_resp  (m_pmi_resp)
+        .m_pmi_rsp  (m_pmi_rsp)
     );
     //////////////////////////////////////////////////////////////////////////////////////////////
     // PMI MEMORY MODEL  (generic pipelined req/grant/ack, see ASSUMPTIONS block at top)
@@ -175,7 +175,7 @@ module adn_axi_axil_to_pmi_tb;
     int  pmi_max_ack_latency   = 3;
     bit  pmi_stall_grant       = 0;   // force mgnt low regardless of mreq (backpressure test)
     int  pmi_max_outstanding   = FIFO_DEPTH + 2; // model's own pipeline capacity
-    bit [ADDR_WIDTH-1:0] pmi_error_addr = '1;    // address that always returns mresp=1
+    bit [ADDR_WIDTH-1:0] pmi_error_addr = '1;    // address that always returns mrsp=1
     bit  pmi_error_addr_valid  = 0;
 
     // Pending-transaction tracking uses a plain fixed-depth circular buffer of parallel arrays
@@ -204,13 +204,13 @@ module adn_axi_axil_to_pmi_tb;
             pq_head = 0;
             pq_tail = 0;
             pq_size = 0;
-            m_pmi_resp.mgnt  = 1'b0;
-            m_pmi_resp.mack = 1'b0;
-            m_pmi_resp.mrdata = '0;
-            m_pmi_resp.mresp = 1'b0;
+            m_pmi_rsp.mgnt  = 1'b0;
+            m_pmi_rsp.mack = 1'b0;
+            m_pmi_rsp.mrdata = '0;
+            m_pmi_rsp.mrsp = 1'b0;
         end else begin
             bit err;
-            m_pmi_resp.mack = 1'b0;
+            m_pmi_rsp.mack = 1'b0;
 
             // 1) age / complete the oldest pending transaction
             if (pq_size > 0) begin
@@ -226,12 +226,12 @@ module adn_axi_axil_to_pmi_tb;
                                     = pq_wdata[pq_head][b*8 +: 8];
                             end
                         end
-                        m_pmi_resp.mrdata = '0;
+                        m_pmi_rsp.mrdata = '0;
                     end else begin
-                        m_pmi_resp.mrdata = mem[pq_addr[pq_head][$clog2(MEM_DEPTH_WORDS)+1:2]];
+                        m_pmi_rsp.mrdata = mem[pq_addr[pq_head][$clog2(MEM_DEPTH_WORDS)+1:2]];
                     end
-                    m_pmi_resp.mresp = err;
-                    m_pmi_resp.mack  = 1'b1;
+                    m_pmi_rsp.mrsp = err;
+                    m_pmi_rsp.mack  = 1'b1;
 
                     pq_head = (pq_head + 1) % PMI_MODEL_CAPACITY;
                     pq_size = pq_size - 1;
@@ -239,9 +239,9 @@ module adn_axi_axil_to_pmi_tb;
             end
 
             // 2) grant + accept a new request if there's room and we're not deliberately stalling
-            if (m_pmi_req.mreq && !m_pmi_resp.mgnt && !pmi_stall_grant &&
+            if (m_pmi_req.mreq && !m_pmi_rsp.mgnt && !pmi_stall_grant &&
                 (pq_size < pmi_max_outstanding) && (pq_size < PMI_MODEL_CAPACITY)) begin
-                m_pmi_resp.mgnt = 1'b1;
+                m_pmi_rsp.mgnt = 1'b1;
 
                 pq_addr [pq_tail] = m_pmi_req.maddr;
                 pq_we   [pq_tail] = m_pmi_req.mwe;
@@ -252,7 +252,7 @@ module adn_axi_axil_to_pmi_tb;
                 pq_tail = (pq_tail + 1) % PMI_MODEL_CAPACITY;
                 pq_size = pq_size + 1;
             end else begin
-                m_pmi_resp.mgnt = 1'b0;
+                m_pmi_rsp.mgnt = 1'b0;
             end
         end
     end
@@ -277,11 +277,11 @@ module adn_axi_axil_to_pmi_tb;
     endproperty
 
     ap_awaddr_stable: assert property (
-        p_stable(s_axil_req.aw_valid, s_axil_resp.aw_ready, s_axil_req.aw.addr)
+        p_stable(s_axil_req.aw_valid, s_axil_rsp.aw_ready, s_axil_req.aw.addr)
     ) else $error("AWADDR changed while aw_valid=1 and aw_ready=0");
 
     ap_araddr_stable: assert property (
-        p_stable(s_axil_req.ar_valid, s_axil_resp.ar_ready, s_axil_req.ar.addr)
+        p_stable(s_axil_req.ar_valid, s_axil_rsp.ar_ready, s_axil_req.ar.addr)
     ) else $error("ARADDR changed while ar_valid=1 and ar_ready=0");
 
     // No X on the PMI address/data when a request is actually being issued.
@@ -293,7 +293,7 @@ module adn_axi_axil_to_pmi_tb;
     // assumption #3 above). Adjust/remove if your real PMI target allows req to retract early.
     ap_mreq_holds_until_grant: assert property (
         @(posedge clk) disable iff (!arst_n)
-        (m_pmi_req.mreq && !m_pmi_resp.mgnt) |=> m_pmi_req.mreq
+        (m_pmi_req.mreq && !m_pmi_rsp.mgnt) |=> m_pmi_req.mreq
     ) else $error("mreq deasserted before being granted (mgnt) -- check PMI assumption in TB header");
 `endif // ENABLE_SVA
 
@@ -304,7 +304,7 @@ module adn_axi_axil_to_pmi_tb;
         input  logic [ADDR_WIDTH-1:0] addr,
         input  logic [DATA_WIDTH-1:0] data,
         input  logic [DATA_WIDTH/8-1:0] strb = '1,
-        output logic [1:0] bresp_o
+        output logic [1:0] brsp_o
     );
         int timeout;
         bit done;
@@ -322,7 +322,7 @@ module adn_axi_axil_to_pmi_tb;
         while (!done) begin
             @(posedge clk);
             timeout++;
-            if (s_axil_resp.aw_ready && s_axil_resp.w_ready) begin
+            if (s_axil_rsp.aw_ready && s_axil_rsp.w_ready) begin
                 done = 1;
             end else if (timeout > AXIL_TIMEOUT_CYCLES) begin
                 tb_note_case($sformatf("axil_write addr=0x%0h TIMEOUT waiting AW/W ready", addr), 0);
@@ -341,7 +341,7 @@ module adn_axi_axil_to_pmi_tb;
         while (!done) begin
             @(posedge clk);
             timeout++;
-            if (s_axil_resp.b_valid) begin
+            if (s_axil_rsp.b_valid) begin
                 done = 1;
             end else if (timeout > AXIL_TIMEOUT_CYCLES) begin
                 tb_note_case($sformatf("axil_write addr=0x%0h TIMEOUT waiting BVALID", addr), 0);
@@ -349,7 +349,7 @@ module adn_axi_axil_to_pmi_tb;
             end
         end
 
-        bresp_o = s_axil_resp.b.resp;
+        brsp_o = s_axil_rsp.b.rsp;
         @(negedge clk);
         s_axil_req.b_ready = 1'b0;
     endtask
@@ -357,7 +357,7 @@ module adn_axi_axil_to_pmi_tb;
     task automatic axil_read(
         input  logic [ADDR_WIDTH-1:0] addr,
         output logic [DATA_WIDTH-1:0] data_o,
-        output logic [1:0] rresp_o
+        output logic [1:0] rrsp_o
     );
         int timeout;
         bit done;
@@ -371,7 +371,7 @@ module adn_axi_axil_to_pmi_tb;
         while (!done) begin
             @(posedge clk);
             timeout++;
-            if (s_axil_resp.ar_ready) begin
+            if (s_axil_rsp.ar_ready) begin
                 done = 1;
             end else if (timeout > AXIL_TIMEOUT_CYCLES) begin
                 tb_note_case($sformatf("axil_read addr=0x%0h TIMEOUT waiting ARREADY", addr), 0);
@@ -388,7 +388,7 @@ module adn_axi_axil_to_pmi_tb;
         while (!done) begin
             @(posedge clk);
             timeout++;
-            if (s_axil_resp.r_valid) begin
+            if (s_axil_rsp.r_valid) begin
                 done = 1;
             end else if (timeout > AXIL_TIMEOUT_CYCLES) begin
                 tb_note_case($sformatf("axil_read addr=0x%0h TIMEOUT waiting RVALID", addr), 0);
@@ -396,8 +396,8 @@ module adn_axi_axil_to_pmi_tb;
             end
         end
 
-        data_o  = s_axil_resp.r.data;
-        rresp_o = s_axil_resp.r.resp;
+        data_o  = s_axil_rsp.r.data;
+        rrsp_o = s_axil_rsp.r.rsp;
         @(negedge clk);
         s_axil_req.r_ready = 1'b0;
     endtask
@@ -408,22 +408,22 @@ module adn_axi_axil_to_pmi_tb;
 
     // TC1: single write followed by a read-back, full strobe, no contention.
     task automatic tc1_basic_write_readback();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
 
-        axil_write(32'h0000_0010, 32'hDEAD_BEEF, '1, bresp);
-        tb_note_case("TC1: write bresp == OKAY", bresp == 2'b00);
+        axil_write(32'h0000_0010, 32'hDEAD_BEEF, '1, brsp);
+        tb_note_case("TC1: write brsp == OKAY", brsp == 2'b00);
 
-        axil_read(32'h0000_0010, rdata, rresp);
+        axil_read(32'h0000_0010, rdata, rrsp);
         tb_note_case("TC1: read-back data matches", rdata == 32'hDEAD_BEEF);
-        tb_note_case("TC1: read rresp == OKAY", rresp == 2'b00);
+        tb_note_case("TC1: read rrsp == OKAY", rrsp == 2'b00);
     endtask
 
     // TC2: back-to-back writes to different addresses, then verify each independently.
     task automatic tc2_back_to_back_writes();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
         logic [DATA_WIDTH-1:0] expected[4];
         bit ok = 1;
@@ -434,28 +434,28 @@ module adn_axi_axil_to_pmi_tb;
         expected[3] = 32'h4444_4444;
 
         for (int i = 0; i < 4; i++) begin
-            axil_write(32'h0000_0100 + i*4, expected[i], '1, bresp);
-            if (bresp != 2'b00) ok = 0;
+            axil_write(32'h0000_0100 + i*4, expected[i], '1, brsp);
+            if (brsp != 2'b00) ok = 0;
         end
         tb_note_case("TC2: all writes returned OKAY", ok);
 
         ok = 1;
         for (int i = 0; i < 4; i++) begin
-            axil_read(32'h0000_0100 + i*4, rdata, rresp);
-            if (rdata != expected[i] || rresp != 2'b00) ok = 0;
+            axil_read(32'h0000_0100 + i*4, rdata, rrsp);
+            if (rdata != expected[i] || rrsp != 2'b00) ok = 0;
         end
         tb_note_case("TC2: all read-backs match", ok);
     endtask
 
     // TC3: partial byte-strobe write must only update the enabled bytes.
     task automatic tc3_partial_strobe();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
 
-        axil_write(32'h0000_0200, 32'hAAAA_AAAA, 4'b1111, bresp);
-        axil_write(32'h0000_0200, 32'h1234_5678, 4'b0011, bresp); // only lower 2 bytes
-        axil_read (32'h0000_0200, rdata, rresp);
+        axil_write(32'h0000_0200, 32'hAAAA_AAAA, 4'b1111, brsp);
+        axil_write(32'h0000_0200, 32'h1234_5678, 4'b0011, brsp); // only lower 2 bytes
+        axil_read (32'h0000_0200, rdata, rrsp);
 
         tb_note_case("TC3: partial strobe updates only enabled bytes",
                   rdata == 32'hAAAA_5678);
@@ -465,8 +465,8 @@ module adn_axi_axil_to_pmi_tb;
     // FIFO_DEPTH and rely on AXI backpressure (awready/arready deassertion) to throttle us,
     // rather than manually pacing. This is the main check on the "Outstanding FIFO" block.
     task automatic tc4_outstanding_stress();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
         int n = FIFO_DEPTH * 2;
         bit ok = 1;
@@ -475,15 +475,15 @@ module adn_axi_axil_to_pmi_tb;
         pmi_max_ack_latency = 6; // slow memory -> forces backpressure to build up
 
         for (int i = 0; i < n; i++) begin
-            axil_write(32'h0000_0400 + i*4, 32'hB000_0000 + i, '1, bresp);
-            if (bresp != 2'b00) ok = 0;
+            axil_write(32'h0000_0400 + i*4, 32'hB000_0000 + i, '1, brsp);
+            if (brsp != 2'b00) ok = 0;
         end
         tb_note_case($sformatf("TC4: %0d back-to-back writes past FIFO_DEPTH=%0d all completed OKAY",
                              n, FIFO_DEPTH), ok);
 
         ok = 1;
         for (int i = 0; i < n; i++) begin
-            axil_read(32'h0000_0400 + i*4, rdata, rresp);
+            axil_read(32'h0000_0400 + i*4, rdata, rrsp);
             if (rdata != (32'hB000_0000 + i)) ok = 0;
         end
         tb_note_case("TC4: order preserved under outstanding-transaction pressure", ok);
@@ -495,54 +495,54 @@ module adn_axi_axil_to_pmi_tb;
     // TC5: PMI grant backpressure -- DUT must stall gracefully when the memory side refuses
     // to grant for a while, and recover cleanly once grants resume.
     task automatic tc5_pmi_grant_backpressure();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
 
         pmi_stall_grant = 1;
         fork
-            axil_write(32'h0000_0500, 32'hC0FF_EE00, '1, bresp);
+            axil_write(32'h0000_0500, 32'hC0FF_EE00, '1, brsp);
             begin
                 repeat (15) @(posedge clk);
                 pmi_stall_grant = 0;
             end
         join
         tb_note_case("TC5: write completes OKAY after PMI grant backpressure clears",
-                  bresp == 2'b00);
+                  brsp == 2'b00);
 
-        axil_read(32'h0000_0500, rdata, rresp);
+        axil_read(32'h0000_0500, rdata, rrsp);
         tb_note_case("TC5: data correct after backpressure scenario", rdata == 32'hC0FF_EE00);
     endtask
 
-    // TC6: PMI error response (mresp) must be visible on the AXI side as a non-OKAY response.
+    // TC6: PMI error response (mrsp) must be visible on the AXI side as a non-OKAY response.
     task automatic tc6_pmi_error_response();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
 
         pmi_error_addr       = 32'h0000_0F00;
         pmi_error_addr_valid = 1;
 
-        axil_write(32'h0000_0F00, 32'hBAD0_0000, '1, bresp);
-        tb_note_case("TC6: write to non existent returns non-OKAY bresp", bresp != 2'b00);
+        axil_write(32'h0000_0F00, 32'hBAD0_0000, '1, brsp);
+        tb_note_case("TC6: write to non existent returns non-OKAY brsp", brsp != 2'b00);
 
-        axil_read(32'h0000_0F00, rdata, rresp);
-        tb_note_case("TC6: read from non existent returns non-OKAY rresp", rresp != 2'b00);
+        axil_read(32'h0000_0F00, rdata, rrsp);
+        tb_note_case("TC6: read from non existent returns non-OKAY rrsp", rrsp != 2'b00);
 
         pmi_error_addr_valid = 0;
     endtask
 
     // TC7: reset asserted mid-transaction must not hang the DUT or corrupt the next transaction.
     task automatic tc7_reset_mid_transaction();
-        logic [1:0] bresp;
-        logic [1:0] rresp;
+        logic [1:0] brsp;
+        logic [1:0] rrsp;
         logic [DATA_WIDTH-1:0] rdata;
 
         pmi_min_ack_latency = 5;
         pmi_max_ack_latency = 10;
 
         fork
-            axil_write(32'h0000_0600, 32'hFEED_FACE, '1, bresp);
+            axil_write(32'h0000_0600, 32'hFEED_FACE, '1, brsp);
             begin
                 repeat (3) @(posedge clk);
                 apply_reset(5);
@@ -553,12 +553,12 @@ module adn_axi_axil_to_pmi_tb;
         pmi_min_ack_latency = 1;
         pmi_max_ack_latency = 3;
 
-        // DUT must be responsive again after reset -- prove it with a clean transaction.
-        axil_write(32'h0000_0610, 32'h1357_9BDF, '1, bresp);
-        tb_note_case("TC7: DUT responsive after mid-transaction reset (write OKAY)",
-                  bresp == 2'b00);
+        // DUT must be rsponsive again after reset -- prove it with a clean transaction.
+        axil_write(32'h0000_0610, 32'h1357_9BDF, '1, brsp);
+        tb_note_case("TC7: DUT rsponsive after mid-transaction reset (write OKAY)",
+                  brsp == 2'b00);
 
-        axil_read(32'h0000_0610, rdata, rresp);
+        axil_read(32'h0000_0610, rdata, rrsp);
         tb_note_case("TC7: DUT data integrity correct after reset recovery",
                   rdata == 32'h1357_9BDF);
     endtask
@@ -571,7 +571,7 @@ module adn_axi_axil_to_pmi_tb;
     // same addresses get hit repeatedly, exercising read-after-write and write-after-write.
     localparam int TC8_WINDOW_WORDS = 64;
     task automatic tc8_random_traffic(int num_txns = 50);
-        logic [1:0]  bresp, rresp;
+        logic [1:0]  brsp, rrsp;
         logic [DATA_WIDTH-1:0] rdata;
         logic [DATA_WIDTH-1:0] ref_mem  [0:TC8_WINDOW_WORDS-1];
         bit                    ref_valid[0:TC8_WINDOW_WORDS-1];
@@ -596,8 +596,8 @@ module adn_axi_axil_to_pmi_tb;
             if ($urandom_range(0,1)) begin
                 wdata = $urandom;
                 strb  = $urandom_range(1, 15); // never all-zero strobe
-                axil_write(addr, wdata, strb, bresp);
-                if (bresp != 2'b00) begin
+                axil_write(addr, wdata, strb, brsp);
+                if (brsp != 2'b00) begin
                     ok = 0;
                 end else begin
                     for (int b = 0; b < DATA_WIDTH/8; b++) begin
@@ -608,9 +608,9 @@ module adn_axi_axil_to_pmi_tb;
                     ref_valid[word_idx] = 1;
                 end
             end else begin
-                axil_read(addr, rdata, rresp);
+                axil_read(addr, rdata, rrsp);
                 if (ref_valid[word_idx]) begin
-                    if (rdata !== ref_mem[word_idx] || rresp != 2'b00) ok = 0;
+                    if (rdata !== ref_mem[word_idx] || rrsp != 2'b00) ok = 0;
                 end
             end
         end
