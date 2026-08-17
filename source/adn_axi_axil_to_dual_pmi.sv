@@ -38,7 +38,7 @@ module adn_axi_axil_to_dual_pmi #(
     output pmi_req_t   pmi_req_wr_o, // PMI write request output
     input  pmi_rsp_t   pmi_rsp_wr_i, // PMI write response input
 
-    output pmi_req_t   pmi_req_rd_i, // PMI read request output
+    output pmi_req_t   pmi_req_rd_o, // PMI read request output
     input  pmi_rsp_t   pmi_rsp_rd_i  // PMI read response input
 );
 
