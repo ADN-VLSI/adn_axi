@@ -1,0 +1,23 @@
+<svg height="390" width="419" xmlns="http://www.w3.org/2000/svg">
+<rect width="100%" height="100%" x="0" y="0" style="fill:white;stroke:white;stroke-width:0"/>
+<g style="fill:white;stroke:black;stroke-width:1">
+<rect width="304" height="275" x="60" y="60"/>
+<polygon points="10,95 10,85 30,85 40,95 60,95 40,95 30,105 10,105 10,95"/>
+<text x="65" y="85" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">clk_i</text>
+<polygon points="10,145 10,135 30,135 40,145 60,145 40,145 30,155 10,155 10,145"/>
+<text x="65" y="135" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">arst_ni</text>
+<polygon points="10,245 10,235 30,235 40,245 60,245 40,245 30,255 10,255 10,245"/>
+<text x="65" y="235" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">axil_req_i</text>
+<polygon points="10,295 20,285 40,285 40,295 60,295 40,295 40,305 20,305 10,295"/>
+<text x="65" y="285" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">axil_rsp_o</text>
+<polygon points="364,95 384,95 384,85 404,85 414,95 404,105 384,105 384,95 364,95"/>
+<text x="359" y="85" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_req_wr_o</text>
+<polygon points="364,145 384,145 394,135 414,135 414,145 414,155 394,155 384,145 364,145"/>
+<text x="359" y="135" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_rsp_wr_i</text>
+<polygon points="364,245 384,245 384,235 404,235 414,245 404,255 384,255 384,245 364,245"/>
+<text x="359" y="235" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_req_rd_i</text>
+<polygon points="364,295 384,295 394,285 414,285 414,295 414,305 394,305 384,295 364,295"/>
+<text x="359" y="285" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_rsp_rd_i</text>
+<text x="212" y="350" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_axi_axil_to_dual_pmi</text>
+</g>
+</svg>
