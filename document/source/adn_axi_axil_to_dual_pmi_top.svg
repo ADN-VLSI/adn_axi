@@ -15,7 +15,7 @@
 <polygon points="364,145 384,145 394,135 414,135 414,145 414,155 394,155 384,145 364,145"/>
 <text x="359" y="135" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_rsp_wr_i</text>
 <polygon points="364,245 384,245 384,235 404,235 414,245 404,255 384,255 384,245 364,245"/>
-<text x="359" y="235" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_req_rd_i</text>
+<text x="359" y="235" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_req_rd_o</text>
 <polygon points="364,295 384,295 394,285 414,285 414,295 414,305 394,305 384,295 364,295"/>
 <text x="359" y="285" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">pmi_rsp_rd_i</text>
 <text x="212" y="350" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_axi_axil_to_dual_pmi</text>

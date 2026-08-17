@@ -32,7 +32,7 @@
 |axil_rsp_o|output|axil_rsp_t||AXI4-Lite output response|
 |pmi_req_wr_o|output|pmi_req_t||PMI write request output|
 |pmi_rsp_wr_i|input|pmi_rsp_t||PMI write response input|
-|pmi_req_rd_i|output|pmi_req_t||PMI read request output|
+|pmi_req_rd_o|output|pmi_req_t||PMI read request output|
 |pmi_rsp_rd_i|input|pmi_rsp_t||PMI read response input|
 
 
