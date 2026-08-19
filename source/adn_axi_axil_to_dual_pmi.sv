@@ -132,11 +132,11 @@ module adn_axi_axil_to_dual_pmi #(
   ) wr_fifo (
       .arst_ni         (arst_ni),
       .clk_i           (clk_i  ),
-      .data_in_i       (pmi_rsp_wr_i.mresp? 2'b10:2'b00),
+      .data_in_i       (pmi_rsp_wr_i.mrsp? 2'b10:2'b00),
       .data_in_valid_i (pmi_rsp_wr_i.mack),
       .data_in_ready_o (),
       .count_o         (),
-      .data_out_o      (axil_rsp_o.b.resp),
+      .data_out_o      (axil_rsp_o.b.rsp),
       .data_out_valid_o(w_fifo_pop_valid_o),
       .data_out_ready_i(w_fifo_pop_ready_i)
   );
@@ -185,11 +185,11 @@ module adn_axi_axil_to_dual_pmi #(
   ) rd_fifo (
       .arst_ni         (arst_ni),
       .clk_i           (clk_i),
-      .data_in_i       ({pmi_rsp_rd_i.mrdata, (pmi_rsp_rd_i.mresp ? 2'b10 : 2'b00)}),
+      .data_in_i       ({pmi_rsp_rd_i.mrdata, (pmi_rsp_rd_i.mrsp ? 2'b10 : 2'b00)}),
       .data_in_valid_i (pmi_rsp_rd_i.mack),
       .data_in_ready_o (),
       .count_o         (),
-      .data_out_o      ({axil_rsp_o.r.data, axil_rsp_o.r.resp}),
+      .data_out_o      ({axil_rsp_o.r.data, axil_rsp_o.r.rsp}),
       .data_out_valid_o(r_fifo_pop_valid_o),
       .data_out_ready_i(r_fifo_pop_ready_i)
   );

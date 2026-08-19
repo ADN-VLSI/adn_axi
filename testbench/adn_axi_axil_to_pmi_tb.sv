@@ -73,33 +73,26 @@ See LICENSE file in the project root for full license information
 //   does in a couple of spots instead of using the more "obvious" SV construct.
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-`include "pmi/typedef.svh"
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // TYPEDEFS
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-
-`ifndef ADDR_WIDTH
-`define ADDR_WIDTH 32
-
-`endif
-`ifndef DATA_WIDTH
-`define DATA_WIDTH 32
-`endif
-
 module adn_axi_axil_to_pmi_tb;
 
     `include "vip/adn_common_tb_headers.sv"
+    `include "axil/typedef.svh"
+    `include "pmi/typedef.svh"
 
     //////////////////////////////////////////////////////////////////////////////////////////////
-    // LOCALPARAMS 
+    // LOCALPARAMS
     //////////////////////////////////////////////////////////////////////////////////////////////
-    localparam int ADDR_WIDTH  = `ADDR_WIDTH;
-    localparam int DATA_WIDTH  = `DATA_WIDTH;
+    localparam int ADDR_WIDTH  = 32;
+    localparam int DATA_WIDTH  = 32;
     localparam int FIFO_DEPTH  = 8;
     localparam time CLK_PERIOD = 10ns;
 
     localparam int AXIL_TIMEOUT_CYCLES = 200; // watchdog for stuck handshakes
+
+    `AXIL_REQ_T(axil, ADDR_WIDTH, DATA_WIDTH)
+    `AXIL_RSP_T(axil, DATA_WIDTH)
+    `PMI_REQ_T(pmi, ADDR_WIDTH, DATA_WIDTH)
+    `PMI_RSP_T(pmi, DATA_WIDTH)
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     // ASSIGNMENTS --INSTANTIATION
@@ -149,8 +142,10 @@ module adn_axi_axil_to_pmi_tb;
     endtask
 
     adn_axi_axil_to_pmi #(
-        .ADDR_WIDTH (ADDR_WIDTH),
-        .DATA_WIDTH (DATA_WIDTH),
+        .axil_req_t (axil_req_t),
+        .axil_rsp_t (axil_rsp_t),
+        .pmi_req_t  (pmi_req_t ),
+        .pmi_rsp_t  (pmi_rsp_t ),
         .FIFO_DEPTH (FIFO_DEPTH)
     ) dut (
         .clk         (clk),

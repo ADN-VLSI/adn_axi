@@ -57,7 +57,7 @@ See LICENSE file in the project root for full license information
   ``__MT__`` ``__M__``.w_ready    ``__AS__`` {'0, ``__S__``.w_ready};       \
                                                                             \
   ``__MT__`` ``__M__``.b.id       ``__AS__`` {'0, ``__S__``.b.id};          \
-  ``__MT__`` ``__M__``.b.resp     ``__AS__`` {'0, ``__S__``.b.resp};        \
+  ``__MT__`` ``__M__``.b.rsp     ``__AS__`` {'0, ``__S__``.b.rsp};        \
   ``__MT__`` ``__M__``.b.user     ``__AS__`` {'0, ``__S__``.b.user};        \
   ``__MT__`` ``__M__``.b_valid    ``__AS__`` {'0, ``__S__``.b_valid};       \
   ``__MT__`` ``__S__``.b_ready    ``__AS__`` {'0, ``__M__``.b_ready};       \
@@ -78,7 +78,7 @@ See LICENSE file in the project root for full license information
                                                                             \
   ``__MT__`` ``__M__``.r.id       ``__AS__`` {'0, ``__S__``.r.id};          \
   ``__MT__`` ``__M__``.r.data     ``__AS__`` {'0, ``__S__``.r.data};        \
-  ``__MT__`` ``__M__``.r.resp     ``__AS__`` {'0, ``__S__``.r.resp};        \
+  ``__MT__`` ``__M__``.r.rsp     ``__AS__`` {'0, ``__S__``.r.rsp};        \
   ``__MT__`` ``__M__``.r.last     ``__AS__`` {'0, ``__S__``.r.last};        \
   ``__MT__`` ``__M__``.r.user     ``__AS__`` {'0, ``__S__``.r.user};        \
   ``__MT__`` ``__M__``.r_valid    ``__AS__`` {'0, ``__S__``.r_valid};       \

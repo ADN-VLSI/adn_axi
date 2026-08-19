@@ -81,7 +81,7 @@ See LICENSE file in the project root for full license information
 `define AXI_B_T(__NM__, __IW__, __UW__)                                    \
   typedef struct packed {                                                  \
     logic [  ``__IW__``-1:0] id;                                           \
-    logic [             1:0] resp;                                         \
+    logic [             1:0] rsp;                                         \
     logic [  ``__UW__``-1:0] user;                                         \
   } ``__NM__``_b_t;                                                        \
 
@@ -108,7 +108,7 @@ See LICENSE file in the project root for full license information
   typedef struct packed {                                                  \
     logic [  ``__IW__``-1:0] id;                                           \
     logic [  ``__DW__``-1:0] data;                                         \
-    logic [             1:0] resp;                                         \
+    logic [             1:0] rsp;                                         \
     logic                    last;                                         \
     logic [  ``__UW__``-1:0] user;                                         \
   } ``__NM__``_r_t;                                                        \

@@ -127,7 +127,7 @@ module adn_axi_axil_to_pmi #(
     logic [DATA_WIDTH-1:0] data;
 
     // AXI response code
-    logic [1:0] resp;
+    logic [1:0] rsp;
 
   } response_t;
 
@@ -251,7 +251,7 @@ module adn_axi_axil_to_pmi #(
 
 
   // AXI-Lite handshake generation
-  assign aw_accept = arst_n && s_axil_req.aw_valid && s_axil_resp.aw_ready;
+  assign aw_accept = arst_n && s_axil_req.aw_valid && s_axil_rsp.aw_ready;
 
 
   assign w_accept = arst_n && s_axil_req.w_valid && s_axil_rsp.w_ready;
@@ -389,7 +389,7 @@ module adn_axi_axil_to_pmi #(
           s_axil_rsp.b_valid = 1'b1;
 
 
-          s_axil_rsp.b.resp  = response_fifo[rsp_rd_ptr].resp;
+          s_axil_rsp.b.rsp  = response_fifo[rsp_rd_ptr].rsp;
 
 
         end else begin
@@ -402,7 +402,7 @@ module adn_axi_axil_to_pmi #(
           s_axil_rsp.r.data  = response_fifo[rsp_rd_ptr].data;
 
 
-          s_axil_rsp.r.resp  = response_fifo[rsp_rd_ptr].resp;
+          s_axil_rsp.r.rsp  = response_fifo[rsp_rd_ptr].rsp;
 
 
         end
@@ -739,7 +739,7 @@ module adn_axi_axil_to_pmi #(
 
         response_fifo[rsp_wr_ptr].write <= response_write;
         response_fifo[rsp_wr_ptr].data <= m_pmi_rsp.mrdata;
-        response_fifo[rsp_wr_ptr].resp <= m_pmi_rsp.mrsp ? 2'b10 : 2'b00;
+        response_fifo[rsp_wr_ptr].rsp <= m_pmi_rsp.mrsp ? 2'b10 : 2'b00;
 
         rsp_wr_ptr <= ptr_inc(rsp_wr_ptr);
 
