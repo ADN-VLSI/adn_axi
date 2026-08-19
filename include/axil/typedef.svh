@@ -67,7 +67,7 @@ See LICENSE file in the project root for full license information
 
 // Macro: AXIL_R_T
 // Purpose: Defines the AXI4-Lite Read Data channel structure.
-// Use Case: Used to encapsulate data and rsponse signals for read operations.
+// Use Case: Used to encapsulate data and response signals for read operations.
 `define AXIL_R_T(__NM__, __DW__)                                           \
   typedef struct packed {                                                  \
     logic [``__DW__``-1:0] data;                                           \
