@@ -290,7 +290,7 @@ module adn_axi_fifo_tb;
     for (push_count = 0; push_count < R_FIFO_DEPTH; push_count++) begin
       item.id   = $bits(item.id)'(push_count);
       item.data = $bits(item.data)'(push_count);
-      item.resp = 2'b00;
+      item.rsp = 2'b00;
       item.last = (push_count == R_FIFO_DEPTH - 1) ? 1'b1 : 1'b0;
       item.user = $bits(item.user)'(0);
       drive_r(item);
@@ -321,7 +321,7 @@ module adn_axi_fifo_tb;
 
     for (push_count = 0; push_count < B_FIFO_DEPTH; push_count++) begin
       item.id   = $bits(item.id)'(push_count);
-      item.resp = 2'b00;
+      item.rsp = 2'b00;
       item.user = $bits(item.user)'(0);
       drive_b(item);
       $display("T=%0t: pushed #%0d, ready=%b", $time, push_count + 1, mst_req_o.b_ready);

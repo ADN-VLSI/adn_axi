@@ -38,7 +38,7 @@ See LICENSE file in the project root for full license information
   ``__MT__`` ``__S__``.w_valid    ``__AS__`` {'0, ``__M__``.w_valid};       \
   ``__MT__`` ``__M__``.w_ready    ``__AS__`` {'0, ``__S__``.w_ready};       \
                                                                             \
-  ``__MT__`` ``__M__``.b.resp     ``__AS__`` {'0, ``__S__``.b.resp};        \
+  ``__MT__`` ``__M__``.b.rsp     ``__AS__`` {'0, ``__S__``.b.rsp};        \
   ``__MT__`` ``__M__``.b_valid    ``__AS__`` {'0, ``__S__``.b_valid};       \
   ``__MT__`` ``__S__``.b_ready    ``__AS__`` {'0, ``__M__``.b_ready};       \
                                                                             \
@@ -48,7 +48,7 @@ See LICENSE file in the project root for full license information
   ``__MT__`` ``__M__``.ar_ready   ``__AS__`` {'0, ``__S__``.ar_ready};      \
                                                                             \
   ``__MT__`` ``__M__``.r.data     ``__AS__`` {'0, ``__S__``.r.data};        \
-  ``__MT__`` ``__M__``.r.resp     ``__AS__`` {'0, ``__S__``.r.resp};        \
+  ``__MT__`` ``__M__``.r.rsp     ``__AS__`` {'0, ``__S__``.r.rsp};        \
   ``__MT__`` ``__M__``.r_valid    ``__AS__`` {'0, ``__S__``.r_valid};       \
   ``__MT__`` ``__S__``.r_ready    ``__AS__`` {'0, ``__M__``.r_ready};       \
 `define AXIL_COMB_ASSIGN(__M__, __S__)                                  \
