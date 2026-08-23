@@ -1,33 +1,15 @@
 /*
-Module: adn_axi_pmi_to_axil
-Purpose:
-This module acts as a protocol bridge, converting simple PMI-style (Processor Memory Interface) 
-slave requests into AXI4-Lite master transactions. It enables legacy or simplified 
-peripheral interfaces to communicate with AXI4-Lite compliant interconnects or slaves.
 
-Use Case:
-This is intended for system-on-chip (SoC) designs where a lightweight, non-pipelined 
-register access bus (PMI) needs to interface with standard AXI4-Lite peripherals. 
-It is ideal for control-plane register access where transaction throughput is 
-secondary to simplicity and compatibility.
+### Purpose
+This module serves as a bridge interface that converts PMI (Processor Memory Interface) protocol requests into AXI4-Lite master transactions. It manages address steering, write/read data handling, and response tracking using an internal FIFO to maintain transaction ordering and completion status.
 
-Purpose
--------
-Bridge from a simple PMI-style slave port (mreq/mwe/maddr/...) to an
-AXI4-Lite master port. The original implementation lives in this file and
-has been refactored to use the project's AXI4-Lite packed `request` and
-`response` structs (see include/axil/typedef.svh) while preserving the
-original scalar port interface for backwards compatibility.
-
-Use Case
---------
-Used where a PMI-style register access bus must be translated to an
-AXI4-Lite master to talk to peripheral registers.
+### Use Case
+The `adn_axi_pmi_to_axil` module is designed for SoC architectures where a processor or IP core utilizing the PMI protocol needs to interface with AXI4-Lite compliant peripherals or memory-mapped registers. It acts as a protocol translator, allowing the system to bridge lightweight, low-latency PMI requests into standard AXI4-Lite bus transactions. By incorporating an internal FIFO, it ensures that transaction ordering is preserved, making it suitable for systems requiring strict memory consistency or sequential completion of read/write operations across the bridge.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
-| 0.1      | 2026-08-13 | Motasim Faiyaz | Initial version (refactor to use typedef structs)      |
-| 0.2      | 2026-08-14 | Motasim Faiyaz | Updated documentation and parameter descriptions       |
+| 0.1      | 2026-08-23 | Motasim Faiyaz | Initial version                                        |
+| 1.0      | 2026-08-23 | Motasim Faiyaz | Stable release                                         |
 
 Author : Motasim Faiyaz (motasimfaiyaz@gmail.com)
 This file is part of ADN-VLSI/adn_axi
@@ -36,269 +18,220 @@ Licensed under the MIT License
 See LICENSE file in the project root for full license information
 
 */
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // TYPEDEFS
+  //////////////////////////////////////////////////////////////////////////////////////////////////
 
 `include "axil/typedef.svh"
 `include "pmi/typedef.svh"
 
-// =============================================================================
-// adn_axi_pmi_to_axil
-// -----------------------------------------------------------------------------
-// PMI slave port (mreq/mgnt/maddr/mwe/mwdata/mstrb -> mack/mrsp/mrdata)
-// bridged to an AXI4-Lite master port.
-//
-// Single transaction outstanding at a time: a new PMI request is only
-// granted once the previous transaction's AXI response has been fully
-// consumed. See the design note at the bottom of this file for why this
-// is the safe choice given the source diagram's shared-FIFO response
-// arbitration.
-// =============================================================================
+`AXIL_T(adn_axi_pmi_to_axil_default, 32, 32)
+`PMI_T(adn_axi_pmi_to_axil_pmi_default, 32, 32)
 
 module adn_axi_pmi_to_axil #(
-  parameter int ADDR_WIDTH = 32,          // Width of the address bus
-  parameter int DATA_WIDTH = 32,          // Width of the data bus
-  parameter int STRB_WIDTH = DATA_WIDTH / 8 // Width of the write strobe signal
+  // PARAMETERS
+  parameter type pmi_req_t  = adn_axi_pmi_to_axil_pmi_default_req_t, // PMI request type
+  parameter type pmi_rsp_t  = adn_axi_pmi_to_axil_pmi_default_rsp_t, // PMI response type
+  parameter type axil_req_t = adn_axi_pmi_to_axil_default_req_t,     // AXI4-Lite request type
+  parameter type axil_rsp_t = adn_axi_pmi_to_axil_default_rsp_t,     // AXI4-Lite response type
+  parameter int FIFO_DEPTH  = 4                                      // Outstanding-txn tracking depth
 ) (
-  input  logic                  clk,      // System clock
-  input  logic                  rst_n,    // Asynchronous, active-low reset
-
-  // ---------------- PMI slave port ----------------
-  input  logic                  mreq,     // Request signal from PMI master
-  input  logic                  mwe,      // Write enable: 1 for write, 0 for read
-  input  logic [ADDR_WIDTH-1:0] maddr,    // Address bus
-  input  logic [DATA_WIDTH-1:0] mwdata,   // Write data bus
-  input  logic [STRB_WIDTH-1:0] mstrb,    // Write strobe
-  output logic                  mgnt,     // Grant signal to PMI master
-  output logic                  mack,     // Acknowledge signal to PMI master
-  output logic [           1:0] mrsp,    // Response status (OKAY, SLVERR, etc.)
-  output logic [DATA_WIDTH-1:0] mrdata,   // Read data bus
-
-  // ---------------- AXI4-Lite master port : AW ----------------
-  output logic [ADDR_WIDTH-1:0] aw_addr,  // AXI write address
-  output logic [           2:0] aw_prot,  // AXI protection type
-  output logic                  aw_valid, // AXI write address valid
-  input  logic                  aw_ready, // AXI write address ready
-
-  // ---------------- AXI4-Lite master port : W ----------------
-  output logic [DATA_WIDTH-1:0] w_data,   // AXI write data
-  output logic [STRB_WIDTH-1:0] w_strb,   // AXI write strobe
-  output logic                  w_valid,  // AXI write valid
-  input  logic                  w_ready,  // AXI write ready
-
-  // ---------------- AXI4-Lite master port : B ----------------
-  input  logic [           1:0] b_rsp,   // AXI write response
-  input  logic                  b_valid,  // AXI write response valid
-  output logic                  b_ready,  // AXI write response ready
-
-  // ---------------- AXI4-Lite master port : AR ----------------
-  output logic [ADDR_WIDTH-1:0] ar_addr,  // AXI read address
-  output logic [           2:0] ar_prot,  // AXI read protection type
-  output logic                  ar_valid, // AXI read address valid
-  input  logic                  ar_ready, // AXI read address ready
-
-  // ---------------- AXI4-Lite master port : R ----------------
-  input  logic [DATA_WIDTH-1:0] r_data,   // AXI read data
-  input  logic [           1:0] r_rsp,   // AXI read response
-  input  logic                  r_valid,  // AXI read valid
-  output logic                  r_ready   // AXI read ready
+  
+  // PORTS
+  input  logic                     clk,   // System clock
+  input  logic                     rst_n, // Active-low asynchronous reset
+ 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // PMI slave interface
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  input  pmi_req_t                 s_pmi_req, // PMI request input
+  output pmi_rsp_t                 s_pmi_rsp, // PMI response output
+ 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // AXI4-Lite master interface
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  output axil_req_t                m_axil_req, // AXI4-Lite request output
+  input  axil_rsp_t                m_axil_rsp  // AXI4-Lite response input
 );
+ 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // LOCALPARAMS 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  localparam int ADDR_WIDTH = $bits(s_pmi_req.maddr);
+  localparam int DATA_WIDTH = $bits(s_pmi_req.mwdata);
+  localparam int STRB_WIDTH = DATA_WIDTH / 8;
+  localparam int FIFO_PTR_W = (FIFO_DEPTH <= 1) ? 1 : $clog2(FIFO_DEPTH);
+ 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // SIGNALS 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // FIFO (op-type tracker: 1 = write, 0 = read)
+  
+  logic                   fifo_push_valid; // FIFO push valid signal
+  logic                   fifo_push_ready; // FIFO push ready signal
+  logic                   fifo_push_data;  // FIFO push data (op type)
+ 
+  logic                   fifo_pop_valid;  // FIFO pop valid signal
+  logic                   fifo_pop_ready;  // FIFO pop ready signal
+  logic                   fifo_pop_data;   // FIFO pop data (op type)
+ 
+  logic [FIFO_DEPTH-1:0]  fifo_mem;        // FIFO storage memory
+  logic [FIFO_PTR_W-1:0]  fifo_wr_ptr, fifo_rd_ptr; // FIFO pointers
+  logic [FIFO_PTR_W:0]    fifo_count;      // FIFO occupancy counter
 
-  // Instantiate common request/response typedefs for use inside the module
-  `AXIL_T(axil_m, ADDR_WIDTH, DATA_WIDTH)
-  `PMI_T(pmi, ADDR_WIDTH, DATA_WIDTH)
+  // HS COMN #1 (request-side handshake glue: mreq/mgnt <-> FIFO push)
+  logic req_fire; // PMI request handshake fire signal
+ 
+  
+  // demux/mux (address channel steering on mwe)
+  logic aw_valid_i; // Internal AW valid
+  logic ar_valid_i; // Internal AR valid
+ 
+  
+  // HS COMN #2 (write-side joint AW/W handshake)
+  logic aw_seen_q, w_seen_q;     // per-channel "accepted this txn already" bits
+  logic write_hs_done;           // both AW and W have now been accepted
+  logic write_pending_q;         // Write transaction pending status
+  logic read_pending_q;          // Read transaction pending status
+  logic [ADDR_WIDTH-1:0] write_addr_q, read_addr_q; // Latched addresses
+  logic [DATA_WIDTH-1:0] write_data_q;              // Latched write data
+  logic [STRB_WIDTH-1:0] write_strb_q;              // Latched write strobe
+ 
+  
+  // response-side mux/demux (driven by fifo_pop_data = op type)
+  logic op_type_head;            // 1 = head-of-line txn is a write
+  logic resp_fire;               // Response handshake fire signal
+ 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // ASSIGNMENTS
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  
+  // RTLS - HS COMN #1 : PMI request handshake
+  
+  // mgnt is asserted whenever the FIFO has room to accept a new
+  // outstanding transaction. Accepting a request pushes its op-type
+  // (mwe) into the FIFO in the same cycle.
+  assign fifo_push_ready = (fifo_count < FIFO_DEPTH) &&
+                           !write_pending_q && !read_pending_q;
+  assign s_pmi_rsp.mgnt   = fifo_push_ready;
+  assign req_fire         = s_pmi_req.mreq & s_pmi_rsp.mgnt;
+ 
+  assign fifo_push_valid  = req_fire;
+  assign fifo_push_data   = s_pmi_req.mwe;
+ 
+  
+  // RTLS - demux/mux : address channel steering
+  
+  assign m_axil_req.aw.addr = write_addr_q;
+  assign m_axil_req.ar.addr = read_addr_q;
+  assign m_axil_req.aw.prot = 3'b000;
+  assign m_axil_req.ar.prot = 3'b000;
+ 
+  assign aw_valid_i  = write_pending_q;
+  assign ar_valid_i  = read_pending_q;
+ 
+  assign m_axil_req.w.data = write_data_q;
+  assign m_axil_req.w.strb = write_strb_q;
+ 
+  
+  // RTLS - HS COMN #2 : joint AW + W handshake
+  
+  // aw_valid/w_valid are driven together from the same request pulse and
+  // are held individually until each side has been accepted by the slave
+  // (aw_ready / w_ready seen), so a fast channel doesn't drop valid before
+  // the slow channel has fired.
+  assign m_axil_req.aw_valid = aw_valid_i & ~aw_seen_q;
+  assign m_axil_req.w_valid  = aw_valid_i & ~w_seen_q;
+  assign write_hs_done = (aw_seen_q | m_axil_rsp.aw_ready) &
+                         (w_seen_q | m_axil_rsp.w_ready) & write_pending_q;
+
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  // LOCALPARAMS GENERATED
+  // SEQUENTIALS
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  localparam logic [1:0] S_IDLE      = 2'd0;
-  localparam logic [1:0] S_ADDR_DATA = 2'd1;  // AW/W (write) or AR (read) outstanding
-  localparam logic [1:0] S_RESP      = 2'd2;  // waiting on B (write) or R (read)
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // SIGNALS
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  logic [1:0]             state_q, state_d; // FSM state registers
-
-  logic                   is_write_q;          // Latched transaction type: 1=Write, 0=Read
-  logic [ADDR_WIDTH-1:0]  addr_q;              // Latched address
-  logic [DATA_WIDTH-1:0]  wdata_q;             // Latched write data
-  logic [STRB_WIDTH-1:0]  wstrb_q;             // Latched write strobe
-
-  logic                   aw_pend_q, aw_pend_d; // Sticky-valid for AW channel
-  logic                   w_pend_q,  w_pend_d;  // Sticky-valid for W channel
-  logic                   ar_pend_q, ar_pend_d; // Sticky-valid for AR channel
-
-  // AXI4-Lite and PMI request / response structs (internal usage)
-  axil_m_req_t            axil_req_s;
-  axil_m_rsp_t           axil_rsp_s;
-  pmi_req_t               pmi_req_s;
-  pmi_rsp_t              pmi_rsp_s;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      aw_seen_q <= 1'b0;
+      w_seen_q  <= 1'b0;
+      write_pending_q <= 1'b0;
+      read_pending_q  <= 1'b0;
+      write_addr_q <= '0;
+      read_addr_q  <= '0;
+      write_data_q <= '0;
+      write_strb_q <= '0;
+    end else if (write_hs_done) begin
+      aw_seen_q <= 1'b0;
+      w_seen_q  <= 1'b0;
+      write_pending_q <= 1'b0;
+    end else begin
+      if (req_fire) begin
+        if (s_pmi_req.mwe) begin
+          write_pending_q <= 1'b1;
+          write_addr_q <= s_pmi_req.maddr;
+          write_data_q <= s_pmi_req.mwdata;
+          write_strb_q <= s_pmi_req.mstrb;
+        end else begin
+          read_pending_q <= 1'b1;
+          read_addr_q <= s_pmi_req.maddr;
+        end
+      end
+      if (read_pending_q && m_axil_rsp.ar_ready)
+        read_pending_q <= 1'b0;
+      if (m_axil_req.aw_valid & m_axil_rsp.aw_ready) aw_seen_q <= 1'b1;
+      if (m_axil_req.w_valid  & m_axil_rsp.w_ready ) w_seen_q  <= 1'b1;
+    end
+  end
+ 
+  assign m_axil_req.ar_valid = ar_valid_i;
+ 
+  
+  // RTLS - FIFO : op-type tracker (V/R/D on push side, V/R/D on pop side)
+  
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      fifo_wr_ptr <= '0;
+      fifo_rd_ptr <= '0;
+      fifo_count  <= '0;
+    end else begin
+      if (fifo_push_valid & fifo_push_ready) begin
+        fifo_mem[fifo_wr_ptr] <= fifo_push_data;
+        fifo_wr_ptr           <= fifo_wr_ptr + 1'b1;
+      end
+      if (fifo_pop_valid & fifo_pop_ready) begin
+        fifo_rd_ptr <= fifo_rd_ptr + 1'b1;
+      end
+ 
+      case ({fifo_push_valid & fifo_push_ready, fifo_pop_valid & fifo_pop_ready})
+        2'b10:   fifo_count <= fifo_count + 1'b1;
+        2'b01:   fifo_count <= fifo_count - 1'b1;
+        default: fifo_count <= fifo_count;
+      endcase
+    end
+  end
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // ASSIGNMENTS
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  logic accept;           // Handshake: mreq & mgnt this cycle
-  logic addr_phase_done;  // Address/Data phase completion status
-  logic rsp_done;        // Response phase completion status
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // METHODS
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  assign mgnt   = (state_q == S_IDLE);
-  assign accept = mreq & mgnt;
-
-  assign addr_phase_done = is_write_q ? (~aw_pend_q & ~w_pend_q)
-                                       : (~ar_pend_q);
-
-  // AW channel
-  // Build internal AXI4-Lite request struct from latched values
-  assign axil_req_s.aw.addr  = addr_q;
-  assign axil_req_s.aw.prot  = 3'b000;
-  assign axil_req_s.aw_valid = aw_pend_q;
-
-  assign axil_req_s.w.data   = wdata_q;
-  assign axil_req_s.w.strb   = wstrb_q;
-  assign axil_req_s.w_valid  = w_pend_q;
-
-  assign axil_req_s.ar.addr  = addr_q;
-  assign axil_req_s.ar.prot  = 3'b000;
-  assign axil_req_s.ar_valid = ar_pend_q;
-
-  // Use the common PMI request/response structs for the host-side payloads.
-  assign pmi_req_s.maddr  = addr_q;
-  assign pmi_req_s.mwe    = is_write_q;
-  assign pmi_req_s.mwdata = wdata_q;
-  assign pmi_req_s.mstrb  = wstrb_q;
-  assign pmi_req_s.mreq   = accept;
-
-  assign pmi_rsp_s.mgnt  = mgnt;
-  assign pmi_rsp_s.mack  = mack;
-  assign pmi_rsp_s.mrdata = mrdata;
-  assign pmi_rsp_s.mrsp = mrsp[0];
-
-  // B / R channel readiness - driven by bridge state
-  assign axil_req_s.b_ready  = (state_q == S_RESP) &  is_write_q;
-  assign axil_req_s.r_ready  = (state_q == S_RESP) & ~is_write_q;
-
-  // Map scalar response ports into the internal AXIL response struct
-  assign axil_rsp_s.aw_ready = aw_ready;
-  assign axil_rsp_s.w_ready  = w_ready;
-  assign axil_rsp_s.b.rsp   = b_rsp;
-  assign axil_rsp_s.b_valid  = b_valid;
-  assign axil_rsp_s.ar_ready = ar_ready;
-  assign axil_rsp_s.r.data   = r_data;
-  assign axil_rsp_s.r.rsp   = r_rsp;
-  assign axil_rsp_s.r_valid  = r_valid;
-
-  // PMI response port (driven from internal AXIL response struct)
-  assign rsp_done = is_write_q ? (axil_rsp_s.b_valid & axil_req_s.b_ready)
-                               : (axil_rsp_s.r_valid & axil_req_s.r_ready);
-
-  assign mack   = (state_q == S_RESP) & rsp_done;
-  assign mrsp  = is_write_q ? axil_rsp_s.b.rsp : axil_rsp_s.r.rsp;
-  assign mrdata = axil_rsp_s.r.data;  // don't-care / 0 during writes, real data during reads
-
-  // Map internal request struct fields to scalar AXIL master output ports
-  assign aw_addr  = axil_req_s.aw.addr;
-  assign aw_prot  = axil_req_s.aw.prot;
-  assign aw_valid = axil_req_s.aw_valid;
-
-  assign w_data  = axil_req_s.w.data;
-  assign w_strb  = axil_req_s.w.strb;
-  assign w_valid = axil_req_s.w_valid;
-
-  assign ar_addr  = axil_req_s.ar.addr;
-  assign ar_prot  = axil_req_s.ar.prot;
-  assign ar_valid = axil_req_s.ar_valid;
-
-  // Map host-ready signals from struct to scalar ports
-  assign b_ready = axil_req_s.b_ready;
-  assign r_ready = axil_req_s.r_ready;
-
-  // next-state logic
-  always_comb begin
-    state_d = state_q;
-    unique case (state_q)
-      S_IDLE:      if (accept)          state_d = S_ADDR_DATA;
-      S_ADDR_DATA: if (addr_phase_done) state_d = S_RESP;
-      S_RESP:      if (rsp_done)       state_d = S_IDLE;
-      default:                          state_d = S_IDLE;
-    endcase
-  end
-
-  // sticky AW/W/AR valid tracking
-  always_comb begin
-    aw_pend_d = aw_pend_q;
-    w_pend_d  = w_pend_q;
-    ar_pend_d = ar_pend_q;
-
-    if (accept) begin
-      aw_pend_d =  mwe;
-      w_pend_d  =  mwe;
-      ar_pend_d = ~mwe;
-    end else begin
-      if (aw_pend_q & aw_ready) aw_pend_d = 1'b0;
-      if (w_pend_q  & w_ready)  w_pend_d  = 1'b0;
-      if (ar_pend_q & ar_ready) ar_pend_d = 1'b0;
-    end
-  end
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // SEQUENTIAL LOGIC
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  always_ff @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      state_q    <= S_IDLE;
-      is_write_q <= 1'b0;
-      addr_q     <= '0;
-      wdata_q    <= '0;
-      wstrb_q    <= '0;
-      aw_pend_q  <= 1'b0;
-      w_pend_q   <= 1'b0;
-      ar_pend_q  <= 1'b0;
-    end else begin
-      state_q   <= state_d;
-      aw_pend_q <= aw_pend_d;
-      w_pend_q  <= w_pend_d;
-      ar_pend_q <= ar_pend_d;
-
-      if (accept) begin
-        is_write_q <= mwe;
-        addr_q     <= maddr;
-        wdata_q    <= mwdata;
-        wstrb_q    <= mstrb;
-      end
-    end
-  end
-
+ 
+  assign fifo_pop_valid = (fifo_count != 0);
+  assign fifo_pop_data  = fifo_mem[fifo_rd_ptr];
+  
+  // RTLS - response mux/demux (steered by op_type_head = fifo_pop_data)
+  
+  assign op_type_head = fifo_pop_data;
+ 
+  // demux: route a single downstream-ready line to b_ready or r_ready
+  assign m_axil_req.b_ready = fifo_pop_valid &  op_type_head;
+  assign m_axil_req.r_ready = fifo_pop_valid & ~op_type_head;
+ 
+  assign resp_fire = op_type_head ? (m_axil_rsp.b_valid & m_axil_req.b_ready) :
+                                   (m_axil_rsp.r_valid & m_axil_req.r_ready);
+  assign fifo_pop_ready = resp_fire;
+ 
+  // mux: mresp / mrdata selected by op type (writes carry no read data)
+  assign s_pmi_rsp.mrsp   = op_type_head ? m_axil_rsp.b.rsp : m_axil_rsp.r.rsp;
+  assign s_pmi_rsp.mrdata = op_type_head ? '0 : m_axil_rsp.r.data;
+  assign s_pmi_rsp.mack   = resp_fire;
+ 
 endmodule
-
-// =============================================================================
-// DESIGN NOTE - why the diagram's shared response FIFO needed to change
-// -----------------------------------------------------------------------------
-// The source diagram queues the request "type" (read/write) bit into a FIFO
-// so that, later, whichever response arrives can be routed back onto the
-// single PMI response port. That works ONLY if requests are still completed
-// strictly in order - but AXI4-Lite gives NO ordering guarantee between the
-// B and R channels. If the bridge is allowed to have a write and a read
-// outstanding at the same time (write's address phase finishes, its B
-// response is still pending, and a read is then issued), the read's R
-// response can legally arrive before the write's B response. Gating
-// b_ready/r_ready off a single shared FIFO head (as drawn) would then
-// withhold r_ready while waiting for a B response that hasn't shown up yet,
-// stalling - and on a shared interconnect, potentially deadlocking - the
-// read channel.
-//
-// This implementation removes the hazard by only ever allowing one
-// transaction in flight at a time (mgnt is only asserted from S_IDLE, after
-// the previous transaction's response has been consumed), so "the FIFO"
-// collapses to a single is_write_q register and b_ready/r_ready can safely
-// be gated on it.
-//
-// If multiple outstanding transactions are actually needed for throughput,
-// the correct extension is two independent outstanding-counters (one per
-// AXI channel, not one shared FIFO) to generate b_ready/r_ready, plus a
-// small in-order completion buffer in front of mack/mrsp/mrdata so that
-// an early response can be held until it's actually its turn to be
-// reported on the single, non-tagged PMI response port. Happy to write that
-// version if you need the extra pipelining.
-// =============================================================================
