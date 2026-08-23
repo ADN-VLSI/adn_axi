@@ -24,10 +24,10 @@
 | TC_020    | 2026-08-23 | Shykul Islam Siam          | Reset during pending read transaction     |
 | TC_021    | 2026-08-23 | Shykul Islam Siam          | Randomized read/write stress testing      |
 
-| REVISION | DATE       | AUTHOR                     | DESCRIPTION                |
+| REVISION | DATE       | AUTHOR                     | DESCRIPTION                 |
 |----------|------------|----------------------------|-----------------------------|
 | 0.1      | 2026-08-23 | Md Sakhawat Hossain Sabbir | Initial testbench version   |
-| 1.0      | 2026-08-23 | Shykul Islam Siam          | Stable release               |
+| 1.0      | 2026-08-23 | Shykul Islam Siam          | Stable release              |
 
 Author : Shykul Islam Siam (shykulislam32@gmail.com) & Md Sakhawat Hossain Sabbir (sabbirone939@gmail.com)
 This file is part of ADN-VLSI/adn_common
@@ -60,14 +60,13 @@ module adn_axi_axil_to_dual_pmi_tb;
   localparam logic [1:0] OKAY  = 2'b00;  // AXI4-Lite OKAY response
   localparam logic [1:0] ERROR = 2'b10;  // AXI4-Lite ERROR (SLVERR) response
 
-  `AXIL_REQ_T(axil, ADDR_WIDTH, DATA_WIDTH)  // defines axil_req_t
-  `AXIL_RSP_T(axil, DATA_WIDTH)              // defines axil_rsp_t
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // TYPEDEFS
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  `PMI_T(pmi, ADDR_WIDTH, DATA_WIDTH)  // defines pmi_req_t (maddr/mwe/mwdata/mstrb/mreq)
-                                       // and pmi_rsp_t (mgnt/mack/mrdata/mrsp)
+  `PMI_T(pmi, ADDR_WIDTH, DATA_WIDTH)  // defines pmi_req_t (maddr/mwe/mwdata/mstrb/mreq) and pmi_rsp_t (mgnt/mack/mrdata/mrsp)
+  `AXIL_REQ_T(axil, ADDR_WIDTH, DATA_WIDTH)  // defines axil_req_t
+  `AXIL_RSP_T(axil, DATA_WIDTH)              // defines axil_rsp_t
+
 
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // SIGNALS
@@ -232,7 +231,7 @@ module adn_axi_axil_to_dual_pmi_tb;
   // TEST CASES
   //////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // tc_001 : basic AXI4-Lite write transaction
+  // TC_001 : basic AXI4-Lite write transaction
   task automatic tc_001_basic_write();
     apply_reset();
     fork
@@ -241,7 +240,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_002 : basic AXI4-Lite read transaction
+  // TC_002 : basic AXI4-Lite read transaction
   task automatic tc_002_basic_read();
     apply_reset();
     fork
@@ -250,7 +249,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_003 : AW and W accepted on the same cycle
+  // TC_003 : AW and W accepted on the same cycle
   task automatic tc_003_aw_w_same_cycle();
     apply_reset();
     fork
@@ -259,7 +258,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_004 : B-channel backpressure - response must stay pending while b_ready is low
+  // TC_004 : B-channel backpressure - response must stay pending while b_ready is low
   task automatic tc_004_b_backpressure();
     apply_reset();
     axil_req_i.b_ready = 1'b0;  // hold B channel back before issuing
@@ -284,7 +283,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     axil_req_i.b_ready = 1'b0;
   endtask
 
-  // tc_005 : R-channel backpressure - response must stay pending while r_ready is low
+  // TC_005 : R-channel backpressure - response must stay pending while r_ready is low
   task automatic tc_005_r_backpressure();
     apply_reset();
     axil_req_i.r_ready = 1'b0;  // hold R channel back before issuing
@@ -305,7 +304,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_006 : PMI write grant delay
+  // TC_006 : PMI write grant delay
   task automatic tc_006_write_mgnt_delay();
     apply_reset();
     fork
@@ -314,7 +313,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_007 : PMI read grant delay
+  // TC_007 : PMI read grant delay
   task automatic tc_007_read_mgnt_delay();
     apply_reset();
     fork
@@ -323,7 +322,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_008 : PMI write acknowledge delay
+  // TC_008 : PMI write acknowledge delay
   task automatic tc_008_write_mack_delay();
     apply_reset();
     fork
@@ -332,7 +331,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_009 : PMI read acknowledge delay
+  // TC_009 : PMI read acknowledge delay
   task automatic tc_009_read_mack_delay();
     apply_reset();
     fork
@@ -341,7 +340,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_010 : successful AXI write response
+  // TC_010 : successful AXI write response
   task automatic tc_010_write_okay();
     apply_reset();
     fork
@@ -350,7 +349,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_011 : AXI write error response
+  // TC_011 : AXI write error response
   task automatic tc_011_write_error();
     apply_reset();
     fork
@@ -359,7 +358,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_012 : successful AXI read response
+  // TC_012 : successful AXI read response
   task automatic tc_012_read_okay();
     apply_reset();
     fork
@@ -368,7 +367,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_013 : AXI read error response
+  // TC_013 : AXI read error response
   task automatic tc_013_read_error();
     apply_reset();
     fork
@@ -377,7 +376,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_014 : multiple outstanding write transactions
+  // TC_014 : multiple outstanding write transactions
   task automatic tc_014_multiple_write();
     apply_reset();
     fork
@@ -399,7 +398,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_015 : multiple outstanding read transactions
+  // TC_015 : multiple outstanding read transactions
   task automatic tc_015_multiple_read();
     apply_reset();
     fork
@@ -422,7 +421,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_016 : fill the pipeline to PIPELINE_DEPTH outstanding write transactions
+  // TC_016 : fill the pipeline to PIPELINE_DEPTH outstanding write transactions
   task automatic tc_016_pipeline_boundary();
     apply_reset();
     fork
@@ -445,7 +444,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_017 : simultaneous read and write activity on independent PMI channels
+  // TC_017 : simultaneous read and write activity on independent PMI channels
   task automatic tc_017_simultaneous_read_write();
     apply_reset();
     fork
@@ -464,7 +463,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     join
   endtask
 
-  // tc_018 : reset idle-state behavior - all readys must be low while in reset
+  // TC_018 : reset idle-state behavior - all readys must be low while in reset
   task automatic tc_018_reset_idle();
     arst_ni      = 1'b0;  // assert reset, no apply_reset() wait
     axil_req_i   = '0;
@@ -477,7 +476,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     @(posedge clk_i);
   endtask
 
-  // tc_019 : reset asserted while a write is pending PMI completion
+  // TC_019 : reset asserted while a write is pending PMI completion
   task automatic tc_019_reset_pending_write();
     apply_reset();
     pmi_rsp_wr_i.mgnt = 1'b1;  // permit the AXI write handshake
@@ -492,7 +491,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     @(posedge clk_i);
   endtask
 
-  // tc_020 : reset asserted while a read is pending PMI completion
+  // TC_020 : reset asserted while a read is pending PMI completion
   task automatic tc_020_reset_pending_read();
     apply_reset();
     pmi_rsp_rd_i.mgnt = 1'b1;  // permit the AXI read handshake
@@ -507,7 +506,7 @@ module adn_axi_axil_to_dual_pmi_tb;
     @(posedge clk_i);
   endtask
 
-  // tc_021 : randomized read/write stress testing
+  // TC_021 : randomized read/write stress testing
   task automatic tc_021_random_stress();
     logic [ADDR_WIDTH-1:0] random_addr;
     logic [DATA_WIDTH-1:0] random_data;
@@ -543,68 +542,61 @@ module adn_axi_axil_to_dual_pmi_tb;
   // PROCEDURALS
   //////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // runs the test selected via the common +test_name plusarg; TC_ALL runs every test
+  // Runs the test selected via the common +test_name plusarg;
+  // TC_ALL runs every test
   initial begin
-    if (test_count == 0) test_count = 1;  // run selected test at least once
+    case (test_name)
+      "TC_001": tc_001_basic_write();
+      "TC_002": tc_002_basic_read();
+      "TC_003": tc_003_aw_w_same_cycle();
+      "TC_004": tc_004_b_backpressure();
+      "TC_005": tc_005_r_backpressure();
+      "TC_006": tc_006_write_mgnt_delay();
+      "TC_007": tc_007_read_mgnt_delay();
+      "TC_008": tc_008_write_mack_delay();
+      "TC_009": tc_009_read_mack_delay();
+      "TC_010": tc_010_write_okay();
+      "TC_011": tc_011_write_error();
+      "TC_012": tc_012_read_okay();
+      "TC_013": tc_013_read_error();
+      "TC_014": tc_014_multiple_write();
+      "TC_015": tc_015_multiple_read();
+      "TC_016": tc_016_pipeline_boundary();
+      "TC_017": tc_017_simultaneous_read_write();
+      "TC_018": tc_018_reset_idle();
+      "TC_019": tc_019_reset_pending_write();
+      "TC_020": tc_020_reset_pending_read();
+      "TC_021": tc_021_random_stress();
 
-    repeat (test_count) begin
-      case (test_name)
-        "TC_001": tc_001_basic_write();              // basic AXI write
-        "TC_002": tc_002_basic_read();                // basic AXI read
-        "TC_003": tc_003_aw_w_same_cycle();            // AW/W same-cycle handshake
-        "TC_004": tc_004_b_backpressure();             // B-channel backpressure
-        "TC_005": tc_005_r_backpressure();             // R-channel backpressure
-        "TC_006": tc_006_write_mgnt_delay();           // PMI write grant delay
-        "TC_007": tc_007_read_mgnt_delay();            // PMI read grant delay
-        "TC_008": tc_008_write_mack_delay();           // PMI write ack delay
-        "TC_009": tc_009_read_mack_delay();            // PMI read ack delay
-        "TC_010": tc_010_write_okay();                 // successful write
-        "TC_011": tc_011_write_error();                // write error response
-        "TC_012": tc_012_read_okay();                  // successful read
-        "TC_013": tc_013_read_error();                 // read error response
-        "TC_014": tc_014_multiple_write();             // multiple outstanding writes
-        "TC_015": tc_015_multiple_read();              // multiple outstanding reads
-        "TC_016": tc_016_pipeline_boundary();          // fill to PIPELINE_DEPTH
-        "TC_017": tc_017_simultaneous_read_write();    // concurrent read + write
-        "TC_018": tc_018_reset_idle();                 // reset idle-state behavior
-        "TC_019": tc_019_reset_pending_write();        // reset during pending write
-        "TC_020": tc_020_reset_pending_read();         // reset during pending read
-        "TC_021": tc_021_random_stress();              // randomized stress
+      "TC_ALL": begin
+        tc_001_basic_write();
+        tc_002_basic_read();
+        tc_003_aw_w_same_cycle();
+        tc_004_b_backpressure();
+        tc_005_r_backpressure();
+        tc_006_write_mgnt_delay();
+        tc_007_read_mgnt_delay();
+        tc_008_write_mack_delay();
+        tc_009_read_mack_delay();
+        tc_010_write_okay();
+        tc_011_write_error();
+        tc_012_read_okay();
+        tc_013_read_error();
+        tc_014_multiple_write();
+        tc_015_multiple_read();
+        tc_016_pipeline_boundary();
+        tc_017_simultaneous_read_write();
+        tc_018_reset_idle();
+        tc_019_reset_pending_write();
+        tc_020_reset_pending_read();
+        tc_021_random_stress();
+      end
 
-        "TC_ALL", "default": begin  // run every directed + randomized test (also covers the
-                                     // literal TN="default" value used when +TN is not passed)
-          tc_001_basic_write();
-          tc_002_basic_read();
-          tc_003_aw_w_same_cycle();
-          tc_004_b_backpressure();
-          tc_005_r_backpressure();
-          tc_006_write_mgnt_delay();
-          tc_007_read_mgnt_delay();
-          tc_008_write_mack_delay();
-          tc_009_read_mack_delay();
-          tc_010_write_okay();
-          tc_011_write_error();
-          tc_012_read_okay();
-          tc_013_read_error();
-          tc_014_multiple_write();
-          tc_015_multiple_read();
-          tc_016_pipeline_boundary();
-          tc_017_simultaneous_read_write();
-          tc_018_reset_idle();
-          tc_019_reset_pending_write();
-          tc_020_reset_pending_read();
-          tc_021_random_stress();
-        end
+      default: $fatal(1, "\033[1;31mUNKNOWN TEST NAME: %s\033[0m", test_name);
 
-        default: begin  // unknown test name -> fail, not silent skip
-          $error("Unknown test case name '%s' specified in TN parameter", test_name);
-          $finish;
-        end
-      endcase
-    end
+    endcase
 
-    repeat (5) @(posedge clk_i);  // let final transactions settle
     $finish;
   end
 
-endmodule
+endmodule                                  // make simulate TOP=adn_axi_axil_to_dual_pmi_tb TN=TC_ALL
