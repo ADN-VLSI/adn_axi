@@ -1,8 +1,10 @@
 /*
 
-@foez-bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Purpose
+This module serves as a bridge interface that converts PMI (Processor Memory Interface) protocol requests into AXI4-Lite master transactions. It manages address steering, write/read data handling, and response tracking using an internal FIFO to maintain transaction ordering and completion status.
 
-@foez-bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Use Case
+The `adn_axi_pmi_to_axil` module is designed for SoC architectures where a processor or IP core utilizing the PMI protocol needs to interface with AXI4-Lite compliant peripherals or memory-mapped registers. It acts as a protocol translator, allowing the system to bridge lightweight, low-latency PMI requests into standard AXI4-Lite bus transactions. By incorporating an internal FIFO, it ensures that transaction ordering is preserved, making it suitable for systems requiring strict memory consistency or sequential completion of read/write operations across the bridge.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
@@ -26,36 +28,32 @@ See LICENSE file in the project root for full license information
 `AXIL_T(adn_axi_pmi_to_axil_default, 32, 32)
 `PMI_T(adn_axi_pmi_to_axil_pmi_default, 32, 32)
 
-// @foez-bhai, add comments to the parameters, ports
 module adn_axi_pmi_to_axil #(
   // PARAMETERS
-  parameter type pmi_req_t  = adn_axi_pmi_to_axil_pmi_default_req_t,
-  parameter type pmi_rsp_t  = adn_axi_pmi_to_axil_pmi_default_rsp_t,
-  parameter type axil_req_t = adn_axi_pmi_to_axil_default_req_t,
-  parameter type axil_rsp_t = adn_axi_pmi_to_axil_default_rsp_t,
-  parameter int FIFO_DEPTH  = 4                    // outstanding-txn tracking depth
+  parameter type pmi_req_t  = adn_axi_pmi_to_axil_pmi_default_req_t, // PMI request type
+  parameter type pmi_rsp_t  = adn_axi_pmi_to_axil_pmi_default_rsp_t, // PMI response type
+  parameter type axil_req_t = adn_axi_pmi_to_axil_default_req_t,     // AXI4-Lite request type
+  parameter type axil_rsp_t = adn_axi_pmi_to_axil_default_rsp_t,     // AXI4-Lite response type
+  parameter int FIFO_DEPTH  = 4                                      // Outstanding-txn tracking depth
 ) (
   
   // PORTS
-
-  input  logic                     clk,
-  input  logic                     rst_n,
+  input  logic                     clk,   // System clock
+  input  logic                     rst_n, // Active-low asynchronous reset
  
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // PMI slave interface
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  input  pmi_req_t                 s_pmi_req,
-  output pmi_rsp_t                 s_pmi_rsp,
+  input  pmi_req_t                 s_pmi_req, // PMI request input
+  output pmi_rsp_t                 s_pmi_rsp, // PMI response output
  
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // AXI4-Lite master interface
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  output axil_req_t                m_axil_req,
-  input  axil_rsp_t                m_axil_rsp
+  output axil_req_t                m_axil_req, // AXI4-Lite request output
+  input  axil_rsp_t                m_axil_rsp  // AXI4-Lite response input
 );
  
-  // @foez-bhai, add comments to the functional blocks, signals, and submodules
-
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // LOCALPARAMS 
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,40 +67,40 @@ module adn_axi_pmi_to_axil #(
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // FIFO (op-type tracker: 1 = write, 0 = read)
   
-  logic                   fifo_push_valid;
-  logic                   fifo_push_ready;
-  logic                   fifo_push_data;
+  logic                   fifo_push_valid; // FIFO push valid signal
+  logic                   fifo_push_ready; // FIFO push ready signal
+  logic                   fifo_push_data;  // FIFO push data (op type)
  
-  logic                   fifo_pop_valid;
-  logic                   fifo_pop_ready;
-  logic                   fifo_pop_data;
+  logic                   fifo_pop_valid;  // FIFO pop valid signal
+  logic                   fifo_pop_ready;  // FIFO pop ready signal
+  logic                   fifo_pop_data;   // FIFO pop data (op type)
  
-  logic [FIFO_DEPTH-1:0]  fifo_mem;
-  logic [FIFO_PTR_W-1:0]  fifo_wr_ptr, fifo_rd_ptr;
-  logic [FIFO_PTR_W:0]    fifo_count;
+  logic [FIFO_DEPTH-1:0]  fifo_mem;        // FIFO storage memory
+  logic [FIFO_PTR_W-1:0]  fifo_wr_ptr, fifo_rd_ptr; // FIFO pointers
+  logic [FIFO_PTR_W:0]    fifo_count;      // FIFO occupancy counter
 
   // HS COMN #1 (request-side handshake glue: mreq/mgnt <-> FIFO push)
-  logic req_fire;
+  logic req_fire; // PMI request handshake fire signal
  
   
   // demux/mux (address channel steering on mwe)
-  logic aw_valid_i;
-  logic ar_valid_i;
+  logic aw_valid_i; // Internal AW valid
+  logic ar_valid_i; // Internal AR valid
  
   
   // HS COMN #2 (write-side joint AW/W handshake)
   logic aw_seen_q, w_seen_q;     // per-channel "accepted this txn already" bits
   logic write_hs_done;           // both AW and W have now been accepted
-  logic write_pending_q;
-  logic read_pending_q;
-  logic [ADDR_WIDTH-1:0] write_addr_q, read_addr_q;
-  logic [DATA_WIDTH-1:0] write_data_q;
-  logic [STRB_WIDTH-1:0] write_strb_q;
+  logic write_pending_q;         // Write transaction pending status
+  logic read_pending_q;          // Read transaction pending status
+  logic [ADDR_WIDTH-1:0] write_addr_q, read_addr_q; // Latched addresses
+  logic [DATA_WIDTH-1:0] write_data_q;              // Latched write data
+  logic [STRB_WIDTH-1:0] write_strb_q;              // Latched write strobe
  
   
   // response-side mux/demux (driven by fifo_pop_data = op type)
   logic op_type_head;            // 1 = head-of-line txn is a write
-  logic resp_fire;
+  logic resp_fire;               // Response handshake fire signal
  
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // ASSIGNMENTS
