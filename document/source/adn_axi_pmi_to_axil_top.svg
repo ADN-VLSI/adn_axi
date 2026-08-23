@@ -1,67 +1,19 @@
-<svg height="1190" width="1190" xmlns="http://www.w3.org/2000/svg">
+<svg height="440" width="440" xmlns="http://www.w3.org/2000/svg">
 <rect width="100%" height="100%" x="0" y="0" style="fill:white;stroke:white;stroke-width:0"/>
 <g style="fill:white;stroke:black;stroke-width:1">
-<rect width="1075" height="1075" x="60" y="60"/>
+<rect width="325" height="325" x="60" y="60"/>
 <polygon points="10,95 10,85 30,85 40,95 60,95 40,95 30,105 10,105 10,95"/>
 <text x="65" y="85" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">clk</text>
 <polygon points="10,145 10,135 30,135 40,145 60,145 40,145 30,155 10,155 10,145"/>
 <text x="65" y="135" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">rst_n</text>
-<polygon points="10,245 10,235 30,235 40,245 60,245 40,245 30,255 10,255 10,245"/>
-<text x="65" y="235" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mreq</text>
-<polygon points="10,295 10,285 30,285 40,295 60,295 40,295 30,305 10,305 10,295"/>
-<text x="65" y="285" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mwe</text>
+<polygon points="10,195 10,185 30,185 40,195 60,195 40,195 30,205 10,205 10,195"/>
+<text x="65" y="185" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">s_pmi_req</text>
+<polygon points="10,245 20,235 40,235 40,245 60,245 40,245 40,255 20,255 10,245"/>
+<text x="65" y="235" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">s_pmi_rsp</text>
+<polygon points="10,295 20,285 40,285 40,295 60,295 40,295 40,305 20,305 10,295"/>
+<text x="65" y="285" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">m_axil_req</text>
 <polygon points="10,345 10,335 30,335 40,345 60,345 40,345 30,355 10,355 10,345"/>
-<text x="65" y="335" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">maddr</text>
-<polygon points="10,395 10,385 30,385 40,395 60,395 40,395 30,405 10,405 10,395"/>
-<text x="65" y="385" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mwdata</text>
-<polygon points="10,445 10,435 30,435 40,445 60,445 40,445 30,455 10,455 10,445"/>
-<text x="65" y="435" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mstrb</text>
-<polygon points="10,495 20,485 40,485 40,495 60,495 40,495 40,505 20,505 10,495"/>
-<text x="65" y="485" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mgnt</text>
-<polygon points="10,545 20,535 40,535 40,545 60,545 40,545 40,555 20,555 10,545"/>
-<text x="65" y="535" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mack</text>
-<polygon points="10,595 20,585 40,585 40,595 60,595 40,595 40,605 20,605 10,595"/>
-<text x="65" y="585" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mrsp</text>
-<polygon points="10,645 20,635 40,635 40,645 60,645 40,645 40,655 20,655 10,645"/>
-<text x="65" y="635" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">mrdata</text>
-<polygon points="10,745 10,735 30,735 40,745 60,745 40,745 30,755 10,755 10,745"/>
-<text x="65" y="735" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">b_rsp</text>
-<polygon points="10,795 10,785 30,785 40,795 60,795 40,795 30,805 10,805 10,795"/>
-<text x="65" y="785" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">b_valid</text>
-<polygon points="10,845 20,835 40,835 40,845 60,845 40,845 40,855 20,855 10,845"/>
-<text x="65" y="835" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">b_ready</text>
-<polygon points="10,945 10,935 30,935 40,945 60,945 40,945 30,955 10,955 10,945"/>
-<text x="65" y="935" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_data</text>
-<polygon points="10,995 10,985 30,985 40,995 60,995 40,995 30,1005 10,1005 10,995"/>
-<text x="65" y="985" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_rsp</text>
-<polygon points="10,1045 10,1035 30,1035 40,1045 60,1045 40,1045 30,1055 10,1055 10,1045"/>
-<text x="65" y="1035" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_valid</text>
-<polygon points="10,1095 20,1085 40,1085 40,1095 60,1095 40,1095 40,1105 20,1105 10,1095"/>
-<text x="65" y="1085" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">r_ready</text>
-<polygon points="1135,445 1155,445 1155,435 1175,435 1185,445 1175,455 1155,455 1155,445 1135,445"/>
-<text x="1130" y="435" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">aw_addr</text>
-<polygon points="1135,495 1155,495 1155,485 1175,485 1185,495 1175,505 1155,505 1155,495 1135,495"/>
-<text x="1130" y="485" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">aw_prot</text>
-<polygon points="1135,545 1155,545 1155,535 1175,535 1185,545 1175,555 1155,555 1155,545 1135,545"/>
-<text x="1130" y="535" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">aw_valid</text>
-<polygon points="1135,595 1155,595 1165,585 1185,585 1185,595 1185,605 1165,605 1155,595 1135,595"/>
-<text x="1130" y="585" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">aw_ready</text>
-<polygon points="1135,695 1155,695 1155,685 1175,685 1185,695 1175,705 1155,705 1155,695 1135,695"/>
-<text x="1130" y="685" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">w_data</text>
-<polygon points="1135,745 1155,745 1155,735 1175,735 1185,745 1175,755 1155,755 1155,745 1135,745"/>
-<text x="1130" y="735" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">w_strb</text>
-<polygon points="1135,795 1155,795 1155,785 1175,785 1185,795 1175,805 1155,805 1155,795 1135,795"/>
-<text x="1130" y="785" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">w_valid</text>
-<polygon points="1135,845 1155,845 1165,835 1185,835 1185,845 1185,855 1165,855 1155,845 1135,845"/>
-<text x="1130" y="835" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">w_ready</text>
-<polygon points="1135,945 1155,945 1155,935 1175,935 1185,945 1175,955 1155,955 1155,945 1135,945"/>
-<text x="1130" y="935" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">ar_addr</text>
-<polygon points="1135,995 1155,995 1155,985 1175,985 1185,995 1175,1005 1155,1005 1155,995 1135,995"/>
-<text x="1130" y="985" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">ar_prot</text>
-<polygon points="1135,1045 1155,1045 1155,1035 1175,1035 1185,1045 1175,1055 1155,1055 1155,1045 1135,1045"/>
-<text x="1130" y="1035" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">ar_valid</text>
-<polygon points="1135,1095 1155,1095 1165,1085 1185,1085 1185,1095 1185,1105 1165,1105 1155,1095 1135,1095"/>
-<text x="1130" y="1085" dominant-baseline="hanging" text-anchor="end" font-size="20" style="fill:black;stroke:black;stroke-width:0">ar_ready</text>
-<text x="597" y="1150" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_axi_pmi_to_axil</text>
+<text x="65" y="335" dominant-baseline="hanging" text-anchor="start" font-size="20" style="fill:black;stroke:black;stroke-width:0">m_axil_rsp</text>
+<text x="222" y="400" dominant-baseline="hanging" text-anchor="middle" font-size="30" style="fill:black;stroke:black;stroke-width:0">adn_axi_pmi_to_axil</text>
 </g>
 </svg>
