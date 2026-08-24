@@ -14,23 +14,25 @@
 
 |Name|Type|Dimension|Default|Description|
 |-|-|-|-|-|
-|pmi_req_t|type||adn_axi_pmi_to_axil_pmi_default_req_t|PMI request type|
-|pmi_rsp_t|type||adn_axi_pmi_to_axil_pmi_default_rsp_t|PMI response type|
-|axil_req_t|type||adn_axi_pmi_to_axil_default_req_t|AXI4-Lite request type|
-|axil_rsp_t|type||adn_axi_pmi_to_axil_default_rsp_t|AXI4-Lite response type|
-|FIFO_DEPTH|int||4|Outstanding-txn tracking depth|
+|ADDR_WIDTH|int||32||
+|DATA_WIDTH|int||32||
+|pmi_req_t|type||logic||
+|pmi_rsp_t|type||logic||
+|axil_req_t|type||logic||
+|axil_rsp_t|type||logic||
+|OP_FIFO_SIZE|int||2|log2 depth of the op-type tracking FIFO|
 
 
 ## Ports
 
 |Name|Direction|Type|Dimension|Description|
 |-|-|-|-|-|
-|clk|input|logic||System clock|
-|rst_n|input|logic||Active-low asynchronous reset|
-|s_pmi_req|input|pmi_req_t||PMI request input|
-|s_pmi_rsp|output|pmi_rsp_t||PMI response output|
-|m_axil_req|output|axil_req_t||AXI4-Lite request output|
-|m_axil_rsp|input|axil_rsp_t||AXI4-Lite response input|
+|clk_i|input|logic|||
+|arst_ni|input|logic|||
+|pmi_req_i|input|pmi_req_t||------------------------------------------------------------------------ PMI slave interface ------------------------------------------------------------------------|
+|pmi_rsp_o|output|pmi_rsp_t|||
+|axil_req_o|output|axil_req_t||------------------------------------------------------------------------ AXI4-Lite master interface ------------------------------------------------------------------------|
+|axil_rsp_i|input|axil_rsp_t|||
 
 
 ## Description
@@ -41,9 +43,10 @@ This module serves as a bridge interface that converts PMI (Processor Memory Int
 ### Use Case
 The `adn_axi_pmi_to_axil` module is designed for SoC architectures where a processor or IP core utilizing the PMI protocol needs to interface with AXI4-Lite compliant peripherals or memory-mapped registers. It acts as a protocol translator, allowing the system to bridge lightweight, low-latency PMI requests into standard AXI4-Lite bus transactions. By incorporating an internal FIFO, it ensures that transaction ordering is preserved, making it suitable for systems requiring strict memory consistency or sequential completion of read/write operations across the bridge.
 
-| REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
-|----------|------------|-----------------|--------------------------------------------------------|
-| 0.1      | 2026-08-23 | Motasim Faiyaz | Initial version                                        |
-| 1.0      | 2026-08-23 | Motasim Faiyaz | Stable release                                         |
+| REVISION | DATE       | AUTHOR         | DESCRIPTION                                            |
+|----------|------------|----------------|--------------------------------------------------------|
+| 1.0      | 2026-08-13 | Motasim Faiyaz | Initial version                                        |
+| 1.1      | 2026-08-23 | Motasim Faiyaz | Added response tracking                                |
+| 1.2      | 2026-08-24 | Motasim Faiyaz | Uses pre-built subcomponents  utility                  |
 
 Author : Motasim Faiyaz (motasimfaiyaz@gmail.com)
