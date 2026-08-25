@@ -181,6 +181,6 @@ module adn_axi_pmi_to_axil #(
  
   assign pmi_rsp_o.mack   = resp_fire;
   assign pmi_rsp_o.mrdata = op_type_head ? '0 : axil_rsp_i.r.data;
-  assign pmi_rsp_o.mrsp   = op_type_head ? axil_rsp_i.b.rsp[1] : axil_rsp_i.r.rsp[1];
+  assign pmi_rsp_o.mresp   = op_type_head ? axil_rsp_i.b.resp[1] : axil_rsp_i.r.resp[1];
  
 endmodule

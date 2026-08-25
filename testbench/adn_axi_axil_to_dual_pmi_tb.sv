@@ -63,7 +63,7 @@ module adn_axi_axil_to_dual_pmi_tb;
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // TYPEDEFS
   //////////////////////////////////////////////////////////////////////////////////////////////////
-  `PMI_T(pmi, ADDR_WIDTH, DATA_WIDTH)  // defines pmi_req_t (maddr/mwe/mwdata/mstrb/mreq) and pmi_rsp_t (mgnt/mack/mrdata/mrsp)
+  `PMI_T(pmi, ADDR_WIDTH, DATA_WIDTH)  // defines pmi_req_t (maddr/mwe/mwdata/mstrb/mreq) and pmi_rsp_t (mgnt/mack/mrdata/mresp)
   `AXIL_REQ_T(axil, ADDR_WIDTH, DATA_WIDTH)  // defines axil_req_t
   `AXIL_RSP_T(axil, DATA_WIDTH)              // defines axil_rsp_t
 
@@ -145,20 +145,20 @@ module adn_axi_axil_to_dual_pmi_tb;
   endtask
 
   // release b_ready and check the write response against the expected code
-  task automatic axi_write_wait_response(input logic [1:0] expected_rsp);
+  task automatic axi_write_wait_response(input logic [1:0] expected_resp);
     axil_req_i.b_ready = 1'b1;                       // ready to accept the B response
     `WAIT_OR_TIMEOUT(axil_rsp_o.b_valid, "b_valid (axi_write_wait_response)")
-    note_case(axil_rsp_o.b.rsp == expected_rsp);      // record pass/fail
-    if (debug) $display("[%0t] WRITE rsp=%b expected=%b", $time, axil_rsp_o.b.rsp, expected_rsp);
+    note_case(axil_rsp_o.b.resp == expected_resp);      // record pass/fail
+    if (debug) $display("[%0t] WRITE rsp=%b expected=%b", $time, axil_rsp_o.b.resp, expected_resp);
     @(negedge clk_i);
     axil_req_i.b_ready = 1'b0;                        // drop ready
   endtask
 
   // issue an AXI write and wait for its response in one call
   task automatic axi_write(input logic [ADDR_WIDTH-1:0] addr, input logic [DATA_WIDTH-1:0] data,
-                            input logic [DATA_WIDTH/8-1:0] strb, input logic [1:0] expected_rsp);
+                            input logic [DATA_WIDTH/8-1:0] strb, input logic [1:0] expected_resp);
     axi_write_issue(addr, data, strb);                // address/data phase
-    axi_write_wait_response(expected_rsp);            // response phase
+    axi_write_wait_response(expected_resp);            // response phase
   endtask
 
   // drive AR and wait for the address handshake to complete
@@ -173,22 +173,22 @@ module adn_axi_axil_to_dual_pmi_tb;
   endtask
 
   // release r_ready and check the read data and response code
-  task automatic axi_read_wait_response(input logic [DATA_WIDTH-1:0] expected_data, input logic [1:0] expected_rsp);
+  task automatic axi_read_wait_response(input logic [DATA_WIDTH-1:0] expected_data, input logic [1:0] expected_resp);
     axil_req_i.r_ready = 1'b1;                        // ready to accept the R response
     `WAIT_OR_TIMEOUT(axil_rsp_o.r_valid, "r_valid (axi_read_wait_response)")
-    note_case((axil_rsp_o.r.data == expected_data) && (axil_rsp_o.r.rsp == expected_rsp));  // pass/fail
+    note_case((axil_rsp_o.r.data == expected_data) && (axil_rsp_o.r.resp == expected_resp));  // pass/fail
     if (debug)
       $display("[%0t] READ data=%h expected=%h rsp=%b expected=%b", $time, axil_rsp_o.r.data,
-                expected_data, axil_rsp_o.r.rsp, expected_rsp);
+                expected_data, axil_rsp_o.r.resp, expected_resp);
     @(negedge clk_i);
     axil_req_i.r_ready = 1'b0;                        // drop ready
   endtask
 
   // issue an AXI read and wait for its response in one call
   task automatic axi_read(input logic [ADDR_WIDTH-1:0] addr, input logic [DATA_WIDTH-1:0] expected_data,
-                           input logic [1:0] expected_rsp);
+                           input logic [1:0] expected_resp);
     axi_read_issue(addr);                             // address phase
-    axi_read_wait_response(expected_data, expected_rsp);  // response phase
+    axi_read_wait_response(expected_data, expected_resp);  // response phase
   endtask
 
   // model the PMI write side: grant then acknowledge, with independent delays
@@ -199,11 +199,11 @@ module adn_axi_axil_to_dual_pmi_tb;
     @(posedge clk_i);
     pmi_rsp_wr_i.mgnt = 1'b0;                         // drop grant
     repeat (mack_delay) @(posedge clk_i);             // model ack latency
-    pmi_rsp_wr_i.mrsp = error;                        // 1 = simulate error response
+    pmi_rsp_wr_i.mresp = error;                        // 1 = simulate error response
     pmi_rsp_wr_i.mack = 1'b1;                         // assert acknowledge
     @(posedge clk_i);
     pmi_rsp_wr_i.mack = 1'b0;                         // drop ack
-    pmi_rsp_wr_i.mrsp = 1'b0;                         // clear error flag
+    pmi_rsp_wr_i.mresp = 1'b0;                         // clear error flag
   endtask
 
   // model the PMI read side: grant then acknowledge, supplying read data
@@ -216,11 +216,11 @@ module adn_axi_axil_to_dual_pmi_tb;
     pmi_rsp_rd_i.mgnt = 1'b0;                         // drop grant
     repeat (mack_delay) @(posedge clk_i);             // model ack latency
     pmi_rsp_rd_i.mrdata = data;                       // supply read data
-    pmi_rsp_rd_i.mrsp   = error;                      // 1 = simulate error response
+    pmi_rsp_rd_i.mresp   = error;                      // 1 = simulate error response
     pmi_rsp_rd_i.mack   = 1'b1;                       // assert acknowledge
     @(posedge clk_i);
     pmi_rsp_rd_i.mack   = 1'b0;                       // drop ack
-    pmi_rsp_rd_i.mrsp   = 1'b0;                       // clear error flag
+    pmi_rsp_rd_i.mresp   = 1'b0;                       // clear error flag
     pmi_rsp_rd_i.mrdata = '0;                         // clear read data
   endtask
 
@@ -279,7 +279,7 @@ module adn_axi_axil_to_dual_pmi_tb;
 
     axil_req_i.b_ready = 1'b1;           // release backpressure, verify response
     @(posedge clk_i);
-    note_case(axil_rsp_o.b_valid && (axil_rsp_o.b.rsp == OKAY));
+    note_case(axil_rsp_o.b_valid && (axil_rsp_o.b.resp == OKAY));
     axil_req_i.b_ready = 1'b0;
   endtask
 
@@ -390,7 +390,7 @@ module adn_axi_axil_to_dual_pmi_tb;
         axil_req_i.b_ready = 1'b1;
         repeat (4) begin
           `WAIT_OR_TIMEOUT(axil_rsp_o.b_valid, "b_valid (tc_014_multiple_write)")
-          note_case(axil_rsp_o.b.rsp == OKAY);
+          note_case(axil_rsp_o.b.resp == OKAY);
           @(posedge clk_i);
         end
         axil_req_i.b_ready = 1'b0;
@@ -413,7 +413,7 @@ module adn_axi_axil_to_dual_pmi_tb;
         for (int i = 0; i < 4; i++) begin
           `WAIT_OR_TIMEOUT(axil_rsp_o.r_valid, "r_valid (tc_015_multiple_read)")
           note_case(axil_rsp_o.r.data == (32'h2000_0000 + i));
-          note_case(axil_rsp_o.r.rsp == OKAY);
+          note_case(axil_rsp_o.r.resp == OKAY);
           @(posedge clk_i);
         end
         axil_req_i.r_ready = 1'b0;
@@ -436,7 +436,7 @@ module adn_axi_axil_to_dual_pmi_tb;
         axil_req_i.b_ready = 1'b1;
         repeat (PIPELINE_DEPTH) begin
           `WAIT_OR_TIMEOUT(axil_rsp_o.b_valid, "b_valid (tc_016_pipeline_boundary)")
-          note_case(axil_rsp_o.b.rsp == OKAY);
+          note_case(axil_rsp_o.b.resp == OKAY);
           @(posedge clk_i);
         end
         axil_req_i.b_ready = 1'b0;

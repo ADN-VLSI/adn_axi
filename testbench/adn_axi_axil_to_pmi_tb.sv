@@ -7,7 +7,7 @@
 | TC_003    | 2026-08-10 | Motasim Faiyaz  | partial byte-strobe write must only update the enabled bytes.                          |
 | TC_004    | 2026-08-10 | Motasim Faiyaz  | outstanding-transaction depth stress                                                   |
 | TC_005    | 2026-08-10 | Motasim Faiyaz  | PMI grant backpressure.                                                                |
-| TC_006    | 2026-08-10 | Motasim Faiyaz  | PMI error response (mrsp) must be visible on the AXI side as a non-OKAY response.     |
+| TC_006    | 2026-08-10 | Motasim Faiyaz  | PMI error response (mresp) must be visible on the AXI side as a non-OKAY response.     |
 | TC_007    | 2026-08-10 | Motasim Faiyaz  | reset asserted mid-transaction must not hang the DUT or corrupt the next transaction.  |
 | TC_008    | 2026-08-10 | Motasim Faiyaz  | randomized read/write mix against a reference memory model, N transactions.            |
  
@@ -44,7 +44,7 @@ See LICENSE file in the project root for full license information
 //       - DUT asserts mreq and holds maddr/mwe/mwdata/mstrb stable until mgnt is seen high
 //         in the same cycle (valid/ready-style acceptance, NOT a level-held "accepted" signal).
 //       - Once accepted, the memory model may take N cycles before returning mack=1 for exactly
-//         one cycle, together with mrdata (for reads) and mrsp (error flag, active high).
+//         one cycle, together with mrdata (for reads) and mresp (error flag, active high).
 //       - Multiple transactions can be in flight (this is what "Outstanding FIFO" in your diagram
 //         is for), and mack responses come back in the SAME ORDER requests were granted (FIFO).
 //     If your real PMI target (e.g. Lattice PMI / a specific memory generator) behaves
@@ -170,7 +170,7 @@ module adn_axi_axil_to_pmi_tb;
     int  pmi_max_ack_latency   = 3;
     bit  pmi_stall_grant       = 0;   // force mgnt low regardless of mreq (backpressure test)
     int  pmi_max_outstanding   = FIFO_DEPTH + 2; // model's own pipeline capacity
-    bit [ADDR_WIDTH-1:0] pmi_error_addr = '1;    // address that always returns mrsp=1
+    bit [ADDR_WIDTH-1:0] pmi_error_addr = '1;    // address that always returns mresp=1
     bit  pmi_error_addr_valid  = 0;
 
     // Pending-transaction tracking uses a plain fixed-depth circular buffer of parallel arrays
@@ -202,7 +202,7 @@ module adn_axi_axil_to_pmi_tb;
             m_pmi_rsp.mgnt  = 1'b0;
             m_pmi_rsp.mack = 1'b0;
             m_pmi_rsp.mrdata = '0;
-            m_pmi_rsp.mrsp = 1'b0;
+            m_pmi_rsp.mresp = 1'b0;
         end else begin
             bit err;
             m_pmi_rsp.mack = 1'b0;
@@ -225,7 +225,7 @@ module adn_axi_axil_to_pmi_tb;
                     end else begin
                         m_pmi_rsp.mrdata = mem[pq_addr[pq_head][$clog2(MEM_DEPTH_WORDS)+1:2]];
                     end
-                    m_pmi_rsp.mrsp = err;
+                    m_pmi_rsp.mresp = err;
                     m_pmi_rsp.mack  = 1'b1;
 
                     pq_head = (pq_head + 1) % PMI_MODEL_CAPACITY;
@@ -344,7 +344,7 @@ module adn_axi_axil_to_pmi_tb;
             end
         end
 
-        brsp_o = s_axil_rsp.b.rsp;
+        brsp_o = s_axil_rsp.b.resp;
         @(negedge clk);
         s_axil_req.b_ready = 1'b0;
     endtask
@@ -392,7 +392,7 @@ module adn_axi_axil_to_pmi_tb;
         end
 
         data_o  = s_axil_rsp.r.data;
-        rrsp_o = s_axil_rsp.r.rsp;
+        rrsp_o = s_axil_rsp.r.resp;
         @(negedge clk);
         s_axil_req.r_ready = 1'b0;
     endtask
@@ -509,7 +509,7 @@ module adn_axi_axil_to_pmi_tb;
         tb_note_case("TC5: data correct after backpressure scenario", rdata == 32'hC0FF_EE00);
     endtask
 
-    // TC6: PMI error response (mrsp) must be visible on the AXI side as a non-OKAY response.
+    // TC6: PMI error response (mresp) must be visible on the AXI side as a non-OKAY response.
     task automatic tc6_pmi_error_response();
         logic [1:0] brsp;
         logic [1:0] rrsp;

@@ -127,7 +127,7 @@ module adn_axi_axil_to_pmi #(
     logic [DATA_WIDTH-1:0] data;
 
     // AXI response code
-    logic [1:0] rsp;
+    logic [1:0] resp;
 
   } response_t;
 
@@ -389,7 +389,7 @@ module adn_axi_axil_to_pmi #(
           s_axil_rsp.b_valid = 1'b1;
 
 
-          s_axil_rsp.b.rsp  = response_fifo[rsp_rd_ptr].rsp;
+          s_axil_rsp.b.resp  = response_fifo[rsp_rd_ptr].resp;
 
 
         end else begin
@@ -402,7 +402,7 @@ module adn_axi_axil_to_pmi #(
           s_axil_rsp.r.data  = response_fifo[rsp_rd_ptr].data;
 
 
-          s_axil_rsp.r.rsp  = response_fifo[rsp_rd_ptr].rsp;
+          s_axil_rsp.r.resp  = response_fifo[rsp_rd_ptr].resp;
 
 
         end
@@ -739,7 +739,7 @@ module adn_axi_axil_to_pmi #(
 
         response_fifo[rsp_wr_ptr].write <= response_write;
         response_fifo[rsp_wr_ptr].data <= m_pmi_rsp.mrdata;
-        response_fifo[rsp_wr_ptr].rsp <= m_pmi_rsp.mrsp ? 2'b10 : 2'b00;
+        response_fifo[rsp_wr_ptr].resp <= m_pmi_rsp.mresp ? 2'b10 : 2'b00;
 
         rsp_wr_ptr <= ptr_inc(rsp_wr_ptr);
 
