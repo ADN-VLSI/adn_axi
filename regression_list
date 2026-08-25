@@ -2,3 +2,4 @@ ci_simulate dummy_tb default 0
 ci_simulate adn_axi_fifo_tb TC_ALL 1000
 ci_simulate adn_axi_axil_to_pmi_tb TC_001 100
 ci_simulate adn_axi_axil_to_dual_pmi_tb TC_ALL 100
+ci_simulate adn_axi_pmi_to_axil_tb TC_ALL 100
