@@ -105,11 +105,11 @@ module adn_axi_pmi_to_axil_tb;
 
     axil_rsp_i.aw_ready = 1'b0;
     axil_rsp_i.w_ready  = 1'b0;
-    axil_rsp_i.b.rsp    = 2'b00;
+    axil_rsp_i.b.resp    = 2'b00;
     axil_rsp_i.b_valid  = 1'b0;
     axil_rsp_i.ar_ready = 1'b0;
     axil_rsp_i.r.data   = '0;
-    axil_rsp_i.r.rsp    = 2'b00;
+    axil_rsp_i.r.resp    = 2'b00;
     axil_rsp_i.r_valid  = 1'b0;
 
   endtask
@@ -180,7 +180,7 @@ module adn_axi_pmi_to_axil_tb;
   // WAIT FOR PMI ACK
   //////////////////////////////////////////////////////////////////////////////////////////////////
 
-  task automatic wait_pmi_ack(input logic expected_mrsp,
+  task automatic wait_pmi_ack(input logic expected_mresp,
                               input logic [DATA_WIDTH-1:0] expected_data);
 
     int timeout;
@@ -196,12 +196,12 @@ module adn_axi_pmi_to_axil_tb;
         end
       end
 
-      if (pmi_rsp_o.mrsp !== expected_mrsp) begin
-        $error("[%0t] PMI MRSP mismatch: expected=%0b actual=%0b", $time, expected_mrsp,
-               pmi_rsp_o.mrsp);
+      if (pmi_rsp_o.mresp !== expected_mresp) begin
+        $error("[%0t] PMI mresp mismatch: expected=%0b actual=%0b", $time, expected_mresp,
+               pmi_rsp_o.mresp);
       end
 
-      if (!expected_mrsp) begin
+      if (!expected_mresp) begin
         if (pmi_rsp_o.mrdata !== expected_data) begin
           $error("[%0t] PMI MRDATA mismatch: expected=0x%08h actual=0x%08h", $time, expected_data,
                  pmi_rsp_o.mrdata);
@@ -293,7 +293,7 @@ module adn_axi_pmi_to_axil_tb;
       while (!axil_req_o.b_ready) @(posedge clk_i);
       @(negedge clk_i);
 
-      axil_rsp_i.b.rsp   = rsp;
+      axil_rsp_i.b.resp   = rsp;
       axil_rsp_i.b_valid = 1'b1;
 
       @(posedge clk_i);
@@ -310,14 +310,14 @@ module adn_axi_pmi_to_axil_tb;
         $error("[%0t] PMI MACK not asserted for AXI write response", $time);
       end
 
-      if (pmi_rsp_o.mrsp !== rsp[1]) begin
-        $error("[%0t] PMI MRSP mismatch: expected=%0b actual=%0b", $time, rsp[1], pmi_rsp_o.mrsp);
+      if (pmi_rsp_o.mresp !== rsp[1]) begin
+        $error("[%0t] PMI mresp mismatch: expected=%0b actual=%0b", $time, rsp[1], pmi_rsp_o.mresp);
       end
 
       @(negedge clk_i);
 
       axil_rsp_i.b_valid = 1'b0;
-      axil_rsp_i.b.rsp   = 2'b00;
+      axil_rsp_i.b.resp   = 2'b00;
     end
   endtask
 
@@ -332,7 +332,7 @@ module adn_axi_pmi_to_axil_tb;
       @(negedge clk_i);
 
       axil_rsp_i.r.data  = data;
-      axil_rsp_i.r.rsp   = rsp;
+      axil_rsp_i.r.resp   = rsp;
       axil_rsp_i.r_valid = 1'b1;
 
       @(posedge clk_i);
@@ -349,8 +349,8 @@ module adn_axi_pmi_to_axil_tb;
         $error("[%0t] PMI MACK not asserted for AXI read response", $time);
       end
 
-      if (pmi_rsp_o.mrsp !== rsp[1]) begin
-        $error("[%0t] PMI MRSP mismatch: expected=%0b actual=%0b", $time, rsp[1], pmi_rsp_o.mrsp);
+      if (pmi_rsp_o.mresp !== rsp[1]) begin
+        $error("[%0t] PMI mresp mismatch: expected=%0b actual=%0b", $time, rsp[1], pmi_rsp_o.mresp);
       end
 
       if (pmi_rsp_o.mrdata !== data) begin
@@ -362,7 +362,7 @@ module adn_axi_pmi_to_axil_tb;
 
       axil_rsp_i.r_valid = 1'b0;
       axil_rsp_i.r.data  = '0;
-      axil_rsp_i.r.rsp   = 2'b00;
+      axil_rsp_i.r.resp   = 2'b00;
     end
   endtask
 
@@ -558,7 +558,7 @@ module adn_axi_pmi_to_axil_tb;
   //
   // WRITE RESPONSE PROPAGATION
   //
-  // AXI BRESP[1] -> PMI MRSP
+  // AXI BRESP[1] -> PMI mresp
   //////////////////////////////////////////////////////////////////////////////////////////////////
 
   task automatic tc_005_write_response();
@@ -693,7 +693,7 @@ module adn_axi_pmi_to_axil_tb;
       @(negedge clk_i);
 
       axil_rsp_i.b_valid = 1'b1;
-      axil_rsp_i.b.rsp   = 2'b00;
+      axil_rsp_i.b.resp   = 2'b00;
 
       @(posedge clk_i);
 
@@ -720,7 +720,7 @@ module adn_axi_pmi_to_axil_tb;
 
       axil_rsp_i.r_valid = 1'b1;
       axil_rsp_i.r.data  = 32'h2222_2222;
-      axil_rsp_i.r.rsp   = 2'b00;
+      axil_rsp_i.r.resp   = 2'b00;
 
       @(posedge clk_i);
 
@@ -775,7 +775,7 @@ module adn_axi_pmi_to_axil_tb;
 
       axil_rsp_i.r_valid = 1'b1;
       axil_rsp_i.r.data  = 32'hDEAD_BEEF;
-      axil_rsp_i.r.rsp   = 2'b00;
+      axil_rsp_i.r.resp   = 2'b00;
 
       @(posedge clk_i);
 
@@ -833,7 +833,7 @@ module adn_axi_pmi_to_axil_tb;
   //   2'b10 = SLVERR
   //
   // DUT:
-  //   mrsp = rsp[1] = 1
+  //   mresp = rsp[1] = 1
   //////////////////////////////////////////////////////////////////////////////////////////////////
 
   task automatic tc_010_error_response();
