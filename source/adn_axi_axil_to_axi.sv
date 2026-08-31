@@ -1,8 +1,9 @@
 /*
 
-@foez-bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+This module acts as a protocol bridge that converts AXI4-Lite transactions into full AXI4 transactions. It manages the necessary buffering and state transitions to ensure that AXI4-Lite read and write requests are correctly mapped to the AXI4 interface, handling handshake signals and response propagation between the two protocols.
 
-@foez-bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Use Case
+The `adn_axi_axil_to_axi` module is designed to interface AXI4-Lite masters (such as simple control registers or low-bandwidth peripherals) with high-performance AXI4 interconnects or memory controllers. It effectively acts as a protocol converter, allowing a system to integrate legacy or simplified AXI4-Lite components into a full-featured AXI4 system-on-chip (SoC) architecture without requiring the master to support the full AXI4 burst and ID features.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
@@ -17,35 +18,32 @@ See LICENSE file in the project root for full license information
 
 */
 
-// @foez-bhai, add comments to the parameters, ports
 module adn_axi_axil_to_axi #(
     
     ////////////////////////////////////////////////////////////////////////////////////////////
     // PARAMETERS
     ////////////////////////////////////////////////////////////////////////////////////////////
-    parameter int ADDR_WIDTH = 32,
-    parameter int DATA_WIDTH = 32,
-    parameter int ID_WIDTH   = 4,
-    parameter int USER_WIDTH = 1,
+    parameter int ADDR_WIDTH = 32,          // Width of the address bus
+    parameter int DATA_WIDTH = 32,          // Width of the data bus
+    parameter int ID_WIDTH   = 4,           // Width of the AXI ID signals
+    parameter int USER_WIDTH = 1,           // Width of the user sideband signals
 
-    parameter type axil_req_t = logic,
-    parameter type axil_rsp_t = logic,
-    parameter type axi_req_t  = logic,
-    parameter type axi_rsp_t  = logic
+    parameter type axil_req_t = logic,      // AXI4-Lite request struct type
+    parameter type axil_rsp_t = logic,      // AXI4-Lite response struct type
+    parameter type axi_req_t  = logic,      // AXI4 request struct type
+    parameter type axi_rsp_t  = logic       // AXI4 response struct type
 ) (
-    input logic clk_i,
-    input logic rst_ni,
+    input logic clk_i,                      // System clock
+    input logic rst_ni,                     // Active-low asynchronous reset
 
     // AXI4-Lite Slave Interface
-    input  axil_req_t s_req_i,
-    output axil_rsp_t s_rsp_o,
+    input  axil_req_t s_req_i,              // Slave request signals
+    output axil_rsp_t s_rsp_o,              // Slave response signals
 
     // AXI4 Master Interface
-    output axi_req_t m_req_o,
-    input  axi_rsp_t m_rsp_i
+    output axi_req_t m_req_o,               // Master request signals
+    input  axi_rsp_t m_rsp_i                // Master response signals
 );
-
-  // @foez-bhai, add comments to the functional blocks, signals, and submodules
 
   // ------------------------------------------------------------
   // Local Parameters
@@ -63,13 +61,13 @@ module adn_axi_axil_to_axi #(
   // captured before a complete AXI write transaction is started.
   // ------------------------------------------------------------
 
-  logic                    aw_pending_q;
-  logic [  ADDR_WIDTH-1:0] aw_addr_q;
-  logic [             2:0] aw_prot_q;
+  logic                    aw_pending_q;    // Write address pending flag
+  logic [  ADDR_WIDTH-1:0] aw_addr_q;       // Latched write address
+  logic [             2:0] aw_prot_q;       // Latched write protection signals
 
-  logic                    w_pending_q;
-  logic [  DATA_WIDTH-1:0] w_data_q;
-  logic [DATA_WIDTH/8-1:0] w_strb_q;
+  logic                    w_pending_q;     // Write data pending flag
+  logic [  DATA_WIDTH-1:0] w_data_q;        // Latched write data
+  logic [DATA_WIDTH/8-1:0] w_strb_q;        // Latched write strobe
 
 
   // ------------------------------------------------------------
@@ -79,17 +77,17 @@ module adn_axi_axil_to_axi #(
   // upstream master may change its signals after the handshake.
   // ------------------------------------------------------------
 
-  logic                    ar_pending_q;
-  logic [  ADDR_WIDTH-1:0] ar_addr_q;
-  logic [             2:0] ar_prot_q;
+  logic                    ar_pending_q;    // Read address pending flag
+  logic [  ADDR_WIDTH-1:0] ar_addr_q;       // Latched read address
+  logic [             2:0] ar_prot_q;       // Latched read protection signals
 
 
   // ------------------------------------------------------------
   // Transaction State
   // ------------------------------------------------------------
 
-  logic                    write_active_q;
-  logic                    read_active_q;
+  logic                    write_active_q;  // Indicates an active AXI write transaction
+  logic                    read_active_q;   // Indicates an active AXI read transaction
 
 
   // ------------------------------------------------------------
@@ -98,8 +96,8 @@ module adn_axi_axil_to_axi #(
   // AXI AW and W channels may handshake independently.
   // ------------------------------------------------------------
 
-  logic                    m_aw_done_q;
-  logic                    m_w_done_q;
+  logic                    m_aw_done_q;     // AXI write address handshake complete
+  logic                    m_w_done_q;      // AXI write data handshake complete
 
 
   // ------------------------------------------------------------
@@ -109,50 +107,34 @@ module adn_axi_axil_to_axi #(
   // waiting for the AXI R response.
   // ------------------------------------------------------------
 
-module adn_axi_axil_to_axi #(
-    parameter int ADDR_WIDTH = 32,
-    parameter int DATA_WIDTH = 32,
-    parameter int ID_WIDTH   = 4,
-    parameter int USER_WIDTH = 1,
-
-    parameter type axil_req_t = logic,
-    parameter type axil_rsp_t = logic,
-    parameter type axi_req_t  = logic,
-    parameter type axi_rsp_t  = logic
-) (
-    input logic clk_i,
-    input logic rst_ni,
-
-    // AXI4-Lite Slave Interface
-    input  axil_req_t s_req_i,
-    output axil_rsp_t s_rsp_o,
+  logic                    m_ar_done_q;     // AXI read address handshake complete
 
   // ------------------------------------------------------------
   // AXI-Lite Response Registers
   // ------------------------------------------------------------
 
-  logic                    b_valid_q;
-  logic [             1:0] b_resp_q;
+  logic                    b_valid_q;       // Write response valid flag
+  logic [             1:0] b_resp_q;        // Latched write response
 
-  logic                    r_valid_q;
-  logic [  DATA_WIDTH-1:0] r_data_q;
-  logic [             1:0] r_resp_q;
+  logic                    r_valid_q;       // Read response valid flag
+  logic [  DATA_WIDTH-1:0] r_data_q;        // Latched read data
+  logic [             1:0] r_resp_q;        // Latched read response
 
 
   // ------------------------------------------------------------
   // Handshake Signals
   // ------------------------------------------------------------
 
-  logic                    s_aw_hs;
-  logic                    s_w_hs;
-  logic                    s_ar_hs;
+  logic                    s_aw_hs;         // Slave write address handshake
+  logic                    s_w_hs;          // Slave write data handshake
+  logic                    s_ar_hs;         // Slave read address handshake
 
-  logic                    m_aw_hs;
-  logic                    m_w_hs;
-  logic                    m_b_hs;
+  logic                    m_aw_hs;         // Master write address handshake
+  logic                    m_w_hs;          // Master write data handshake
+  logic                    m_b_hs;          // Master write response handshake
 
-  logic                    m_ar_hs;
-  logic                    m_r_hs;
+  logic                    m_ar_hs;         // Master read address handshake
+  logic                    m_r_hs;          // Master read response handshake
 
 
   // ============================================================
@@ -551,4 +533,3 @@ module adn_axi_axil_to_axi #(
   end
 
 endmodule
-
