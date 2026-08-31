@@ -1,1918 +1,1409 @@
+/*
+
+### Purpose
+
+Directed SystemVerilog testbench for verifying the
+adn_axi_axil_to_axi AXI4-Lite to AXI4 converter.
+
+The testbench verifies:
+
+1. Reset behavior.
+2. AXI-Lite simultaneous AW/W transactions.
+3. AXI-Lite AW-before-W transactions.
+4. AXI-Lite W-before-AW transactions.
+5. Independent AXI AW/W backpressure handling.
+6. AXI write transaction field generation.
+7. AXI write response propagation.
+8. AXI-Lite read to AXI read conversion.
+9. AXI AR backpressure handling.
+10. AXI read response propagation.
+11. Detection of duplicate AXI AR transactions.
+
+The DUT is expected to convert every AXI-Lite transaction into exactly
+one single-beat AXI transaction.
+
+| REVISION | DATE       | AUTHOR   | DESCRIPTION                |
+| -------- | ---------- | -------- | -------------------------- |
+| 0.1      | 2026-08-31 | ADN-VLSI | Initial directed testbench |
+
+This file is part of ADN-VLSI/adn_axi
+Copyright (c) 2026 ADN-VLSI
+Licensed under the MIT License
+See LICENSE file in the project root for full license information
+
+*/
+
 `include "axi/typedef.svh"
 `include "axil/typedef.svh"
 
 module tb_axi_lite_to_axi;
 
-  // ==========================================================================
-  // PARAMETERS
-  // ==========================================================================
+// ------------------------------------------------------------
+// Parameters
+// ------------------------------------------------------------
 
-  localparam int unsigned ID_WIDTH = 4;
-  localparam int unsigned ADDR_WIDTH = 32;
-  localparam int unsigned DATA_WIDTH = 32;
-  localparam int unsigned USER_WIDTH = 1;
+localparam int ADDR_WIDTH = 32;
+localparam int DATA_WIDTH = 32;
+localparam int ID_WIDTH   = 4;
+localparam int USER_WIDTH = 1;
 
-  localparam int unsigned BYTE_WIDTH = DATA_WIDTH / 8;
+localparam time CLK_PERIOD = 10ns;
 
-  localparam logic [ID_WIDTH-1:0] AXI_AWID = 4'h1;
-  localparam logic [ID_WIDTH-1:0] AXI_ARID = 4'h2;
-
-  localparam logic [3:0] AXI_CACHE = 4'b0011;
-  localparam logic [3:0] AXI_QOS = 4'b0000;
-  localparam logic [3:0] AXI_REGION = 4'b0000;
-
-  localparam logic [2:0] EXPECTED_AXI_SIZE = 3'd2;
+localparam logic [2:0] AXI_SIZE  = $clog2(DATA_WIDTH / 8);
+localparam logic [2:0] AXI_INCR  = 3'b001;
 
 
-  // ==========================================================================
-  // CLOCK / RESET
-  // ==========================================================================
+// ------------------------------------------------------------
+// Interface Type Definitions
+//
+// These macros come from:
+//   include/axil/typedef.svh
+//   include/axi/typedef.svh
+// ------------------------------------------------------------
 
-  logic clk;
-  logic aresetn;
+`AXIL_T(axil, ADDR_WIDTH, DATA_WIDTH)
+`AXI_T (axi,  ID_WIDTH, ADDR_WIDTH, DATA_WIDTH, USER_WIDTH)
 
-  initial begin
-    clk = 1'b0;
-    forever #5 clk = ~clk;
-  end
 
-  initial begin
-    aresetn = 1'b0;
+// ------------------------------------------------------------
+// Clock and Reset
+// ------------------------------------------------------------
 
-    repeat (4) @(posedge clk);
+logic clk_i;
+logic rst_ni;
 
-    // Release reset away from the active sampling edge.
-    #1;
-    aresetn = 1'b1;
+
+// ------------------------------------------------------------
+// AXI-Lite Master -> DUT
+// ------------------------------------------------------------
+
+axil_req_t s_req_i;
+axil_rsp_t s_rsp_o;
+
+
+// ------------------------------------------------------------
+// DUT -> AXI Slave
+// ------------------------------------------------------------
+
+axi_req_t m_req_o;
+axi_rsp_t m_rsp_i;
+
+
+// ------------------------------------------------------------
+// Testbench Control / Error Tracking
+// ------------------------------------------------------------
+
+int test_count;
+int error_count;
+
+
+// ------------------------------------------------------------
+// AXI Slave Model Control
+// ------------------------------------------------------------
+
+logic axi_aw_ready;
+logic axi_w_ready;
+logic axi_ar_ready;
+
+logic axi_b_valid;
+logic [1:0] axi_b_resp;
+
+logic axi_r_valid;
+logic [DATA_WIDTH-1:0] axi_r_data;
+logic [1:0] axi_r_resp;
+
+
+// ------------------------------------------------------------
+// AXI Transaction Counters
+//
+// Used to verify that one AXI-Lite transaction creates exactly
+// one AXI transaction.
+// ------------------------------------------------------------
+
+int axi_aw_count;
+int axi_w_count;
+int axi_b_count;
+
+int axi_ar_count;
+int axi_r_count;
+
+
+// ------------------------------------------------------------
+// Captured AXI Write Transaction
+// ------------------------------------------------------------
+
+logic [ID_WIDTH-1:0]   captured_aw_id;
+logic [ADDR_WIDTH-1:0] captured_aw_addr;
+logic [7:0]            captured_aw_len;
+logic [2:0]            captured_aw_size;
+logic [2:0]            captured_aw_burst;
+logic                  captured_aw_lock;
+logic [3:0]            captured_aw_cache;
+logic [2:0]            captured_aw_prot;
+logic [3:0]            captured_aw_qos;
+logic [3:0]            captured_aw_region;
+logic [USER_WIDTH-1:0] captured_aw_user;
+
+logic [DATA_WIDTH-1:0]   captured_w_data;
+logic [DATA_WIDTH/8-1:0] captured_w_strb;
+logic                    captured_w_last;
+logic [USER_WIDTH-1:0]   captured_w_user;
+
+
+// ------------------------------------------------------------
+// Captured AXI Read Transaction
+// ------------------------------------------------------------
+
+logic [ID_WIDTH-1:0]   captured_ar_id;
+logic [ADDR_WIDTH-1:0] captured_ar_addr;
+logic [7:0]            captured_ar_len;
+logic [2:0]            captured_ar_size;
+logic [2:0]            captured_ar_burst;
+logic                  captured_ar_lock;
+logic [3:0]            captured_ar_cache;
+logic [2:0]            captured_ar_prot;
+logic [3:0]            captured_ar_qos;
+logic [3:0]            captured_ar_region;
+logic [USER_WIDTH-1:0] captured_ar_user;
+
+
+// ------------------------------------------------------------
+// DUT
+// ------------------------------------------------------------
+
+adn_axi_axil_to_axi #(
+    .ADDR_WIDTH (ADDR_WIDTH),
+    .DATA_WIDTH (DATA_WIDTH),
+    .ID_WIDTH   (ID_WIDTH),
+    .USER_WIDTH (USER_WIDTH),
+
+    .axil_req_t (axil_req_t),
+    .axil_rsp_t (axil_rsp_t),
+    .axi_req_t  (axi_req_t),
+    .axi_rsp_t  (axi_rsp_t)
+) dut (
+    .clk_i   (clk_i),
+    .rst_ni  (rst_ni),
+
+    .s_req_i (s_req_i),
+    .s_rsp_o (s_rsp_o),
+
+    .m_req_o (m_req_o),
+    .m_rsp_i (m_rsp_i)
+);
+
+
+// ------------------------------------------------------------
+// Clock Generation
+// ------------------------------------------------------------
+
+initial begin
+    clk_i = 1'b0;
+
+    forever begin
+        #(CLK_PERIOD / 2);
+        clk_i = ~clk_i;
+    end
+end
+
+
+// ------------------------------------------------------------
+// AXI Slave Response Driving
+// ------------------------------------------------------------
+
+always_comb begin
+    m_rsp_i = '0;
+
+    // Channel ready controls
+    m_rsp_i.aw_ready = axi_aw_ready;
+    m_rsp_i.w_ready  = axi_w_ready;
+    m_rsp_i.ar_ready = axi_ar_ready;
+
+    // Write response
+    m_rsp_i.b.resp   = axi_b_resp;
+    m_rsp_i.b_valid  = axi_b_valid;
+
+    // Read response
+    m_rsp_i.r.data   = axi_r_data;
+    m_rsp_i.r.resp   = axi_r_resp;
+    m_rsp_i.r.id     = '0;
+    m_rsp_i.r.last   = 1'b1;
+    m_rsp_i.r.user   = '0;
+    m_rsp_i.r_valid  = axi_r_valid;
+end
+
+
+// ------------------------------------------------------------
+// AXI Slave Transaction Monitor
+// ------------------------------------------------------------
+
+always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+
+        axi_aw_count <= 0;
+        axi_w_count  <= 0;
+        axi_b_count  <= 0;
+
+        axi_ar_count <= 0;
+        axi_r_count  <= 0;
+
+        captured_aw_id     <= '0;
+        captured_aw_addr   <= '0;
+        captured_aw_len    <= '0;
+        captured_aw_size   <= '0;
+        captured_aw_burst  <= '0;
+        captured_aw_lock   <= '0;
+        captured_aw_cache  <= '0;
+        captured_aw_prot   <= '0;
+        captured_aw_qos    <= '0;
+        captured_aw_region <= '0;
+        captured_aw_user   <= '0;
+
+        captured_w_data <= '0;
+        captured_w_strb <= '0;
+        captured_w_last <= '0;
+        captured_w_user <= '0;
+
+        captured_ar_id     <= '0;
+        captured_ar_addr   <= '0;
+        captured_ar_len    <= '0;
+        captured_ar_size   <= '0;
+        captured_ar_burst  <= '0;
+        captured_ar_lock   <= '0;
+        captured_ar_cache  <= '0;
+        captured_ar_prot   <= '0;
+        captured_ar_qos    <= '0;
+        captured_ar_region <= '0;
+        captured_ar_user   <= '0;
+
+    end
+    else begin
+
+        // AXI AW handshake
+        if (m_req_o.aw_valid && m_rsp_i.aw_ready) begin
+
+            axi_aw_count <= axi_aw_count + 1;
+
+            captured_aw_id     <= m_req_o.aw.id;
+            captured_aw_addr   <= m_req_o.aw.addr;
+            captured_aw_len    <= m_req_o.aw.len;
+            captured_aw_size   <= m_req_o.aw.size;
+            captured_aw_burst  <= m_req_o.aw.burst;
+            captured_aw_lock   <= m_req_o.aw.lock;
+            captured_aw_cache  <= m_req_o.aw.cache;
+            captured_aw_prot   <= m_req_o.aw.prot;
+            captured_aw_qos    <= m_req_o.aw.qos;
+            captured_aw_region <= m_req_o.aw.region;
+            captured_aw_user   <= m_req_o.aw.user;
+
+            $display(
+                "[%0t] AXI AW handshake: addr=0x%08h",
+                $time,
+                m_req_o.aw.addr
+            );
+        end
+
+
+        // AXI W handshake
+        if (m_req_o.w_valid && m_rsp_i.w_ready) begin
+
+            axi_w_count <= axi_w_count + 1;
+
+            captured_w_data <= m_req_o.w.data;
+            captured_w_strb <= m_req_o.w.strb;
+            captured_w_last <= m_req_o.w.last;
+            captured_w_user <= m_req_o.w.user;
+
+            $display(
+                "[%0t] AXI W handshake: data=0x%08h strb=0x%0h",
+                $time,
+                m_req_o.w.data,
+                m_req_o.w.strb
+            );
+        end
+
+
+        // AXI B handshake
+        if (m_rsp_i.b_valid && m_req_o.b_ready) begin
+
+            axi_b_count <= axi_b_count + 1;
+
+            $display(
+                "[%0t] AXI B handshake: resp=0x%0h",
+                $time,
+                m_rsp_i.b.resp
+            );
+        end
+
+
+        // AXI AR handshake
+        if (m_req_o.ar_valid && m_rsp_i.ar_ready) begin
+
+            axi_ar_count <= axi_ar_count + 1;
+
+            captured_ar_id     <= m_req_o.ar.id;
+            captured_ar_addr   <= m_req_o.ar.addr;
+            captured_ar_len    <= m_req_o.ar.len;
+            captured_ar_size   <= m_req_o.ar.size;
+            captured_ar_burst  <= m_req_o.ar.burst;
+            captured_ar_lock   <= m_req_o.ar.lock;
+            captured_ar_cache  <= m_req_o.ar.cache;
+            captured_ar_prot   <= m_req_o.ar.prot;
+            captured_ar_qos    <= m_req_o.ar.qos;
+            captured_ar_region <= m_req_o.ar.region;
+            captured_ar_user   <= m_req_o.ar.user;
+
+            $display(
+                "[%0t] AXI AR handshake: addr=0x%08h",
+                $time,
+                m_req_o.ar.addr
+            );
+        end
+
+
+        // AXI R handshake
+        if (m_rsp_i.r_valid && m_req_o.r_ready) begin
+
+            axi_r_count <= axi_r_count + 1;
+
+            $display(
+                "[%0t] AXI R handshake: data=0x%08h resp=0x%0h",
+                $time,
+                m_rsp_i.r.data,
+                m_rsp_i.r.resp
+            );
+        end
+
+    end
+end
+
+
+// ------------------------------------------------------------
+// Utility: Report Test
+// ------------------------------------------------------------
+
+task automatic begin_test(
+    input string test_name
+);
+    begin
+        test_count = test_count + 1;
+
+        $display("");
+        $display("============================================================");
+        $display("TEST %0d: %s", test_count, test_name);
+        $display("============================================================");
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Utility: Check
+// ------------------------------------------------------------
+
+task automatic check(
+    input bit condition,
+    input string message
+);
+    begin
+        if (!condition) begin
+            error_count = error_count + 1;
+
+            $error(
+                "[%0t] CHECK FAILED: %s",
+                $time,
+                message
+            );
+        end
+        else begin
+            $display(
+                "[%0t] CHECK PASSED: %s",
+                $time,
+                message
+            );
+        end
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Utility: Wait for Clock Cycles
+// ------------------------------------------------------------
+
+
+task automatic wait_cycles(
+    input int cycles
+);
+    begin
+        repeat (cycles) @(posedge clk_i);
+        #1step;
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Reset DUT
+// ------------------------------------------------------------
+
+task automatic reset_dut;
+    begin
+
+        s_req_i = '0;
+
+        axi_aw_ready = 1'b0;
+        axi_w_ready  = 1'b0;
+        axi_ar_ready = 1'b0;
+
+        axi_b_valid  = 1'b0;
+        axi_b_resp   = 2'b00;
+
+        axi_r_valid  = 1'b0;
+        axi_r_data   = '0;
+        axi_r_resp   = 2'b00;
+
+        rst_ni = 1'b0;
+
+        wait_cycles(5);
+
+        rst_ni = 1'b1;
+
+        wait_cycles(2);
+
+        check(
+            s_rsp_o.b_valid == 1'b0,
+            "BVALID is low after reset"
+        );
+
+        check(
+            s_rsp_o.r_valid == 1'b0,
+            "RVALID is low after reset"
+        );
+
+        check(
+            m_req_o.aw_valid == 1'b0,
+            "AXI AWVALID is low after reset"
+        );
+
+        check(
+            m_req_o.w_valid == 1'b0,
+            "AXI WVALID is low after reset"
+        );
+
+        check(
+            m_req_o.ar_valid == 1'b0,
+            "AXI ARVALID is low after reset"
+        );
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Drive AXI-Lite AW
+// ------------------------------------------------------------
+
+task automatic send_axil_aw(
+    input logic [ADDR_WIDTH-1:0] addr,
+    input logic [2:0]            prot
+);
+    begin
+
+        @(negedge clk_i);
+
+        s_req_i.aw.addr  = addr;
+        s_req_i.aw.prot  = prot;
+        s_req_i.aw_valid = 1'b1;
+
+        do begin
+            @(posedge clk_i);
+        end while (!s_rsp_o.aw_ready);
+
+        @(negedge clk_i);
+        s_req_i.aw_valid = 1'b0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Drive AXI-Lite W
+// ------------------------------------------------------------
+
+task automatic send_axil_w(
+    input logic [DATA_WIDTH-1:0]   data,
+    input logic [DATA_WIDTH/8-1:0] strb
+);
+    begin
+
+        @(negedge clk_i);
+
+        s_req_i.w.data  = data;
+        s_req_i.w.strb  = strb;
+        s_req_i.w_valid = 1'b1;
+
+        do begin
+            @(posedge clk_i);
+        end while (!s_rsp_o.w_ready);
+
+        @(negedge clk_i);
+        s_req_i.w_valid = 1'b0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Drive AXI-Lite AR
+// ------------------------------------------------------------
+
+task automatic send_axil_ar(
+    input logic [ADDR_WIDTH-1:0] addr,
+    input logic [2:0]            prot
+);
+    begin
+
+        @(negedge clk_i);
+
+        s_req_i.ar.addr  = addr;
+        s_req_i.ar.prot  = prot;
+        s_req_i.ar_valid = 1'b1;
+
+        do begin
+            @(posedge clk_i);
+        end while (!s_rsp_o.ar_ready);
+
+        @(negedge clk_i);
+        s_req_i.ar_valid = 1'b0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Receive AXI-Lite B Response
+// ------------------------------------------------------------
+
+task automatic receive_axil_b(
+    input logic [1:0] expected_resp
+);
+    begin
+
+        s_req_i.b_ready = 1'b1;
+
+        do begin
+            @(posedge clk_i);
+        end while (!s_rsp_o.b_valid);
+
+        check(
+            s_rsp_o.b.resp == expected_resp,
+            $sformatf(
+                "AXI-Lite B response is correct: expected=0x%0h actual=0x%0h",
+                expected_resp,
+                s_rsp_o.b.resp
+            )
+        );
+
+        @(negedge clk_i);
+        s_req_i.b_ready = 1'b0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Receive AXI-Lite R Response
+// ------------------------------------------------------------
+
+task automatic receive_axil_r(
+    input logic [DATA_WIDTH-1:0] expected_data,
+    input logic [1:0]            expected_resp
+);
+    begin
+
+        s_req_i.r_ready = 1'b1;
+
+        do begin
+            @(posedge clk_i);
+        end while (!s_rsp_o.r_valid);
+
+        check(
+            s_rsp_o.r.data == expected_data,
+            $sformatf(
+                "AXI-Lite R data is correct: expected=0x%08h actual=0x%08h",
+                expected_data,
+                s_rsp_o.r.data
+            )
+        );
+
+        check(
+            s_rsp_o.r.resp == expected_resp,
+            $sformatf(
+                "AXI-Lite R response is correct: expected=0x%0h actual=0x%0h",
+                expected_resp,
+                s_rsp_o.r.resp
+            )
+        );
+
+        @(negedge clk_i);
+        s_req_i.r_ready = 1'b0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// AXI Write Response Generator
+//
+// Wait until DUT is ready for B, then return the requested
+// response for one complete handshake.
+// ------------------------------------------------------------
+
+task automatic send_axi_b(
+    input logic [1:0] resp
+);
+    begin
+
+        do begin
+            @(posedge clk_i);
+        end while (!m_req_o.b_ready);
+
+        @(negedge clk_i);
+
+        axi_b_resp  = resp;
+        axi_b_valid = 1'b1;
+
+        @(posedge clk_i);
+
+        @(negedge clk_i);
+
+        axi_b_valid = 1'b0;
+        axi_b_resp  = '0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// AXI Read Response Generator
+// ------------------------------------------------------------
+
+task automatic send_axi_r(
+    input logic [DATA_WIDTH-1:0] data,
+    input logic [1:0]            resp
+);
+    begin
+
+        do begin
+            @(posedge clk_i);
+        end while (!m_req_o.r_ready);
+
+        @(negedge clk_i);
+
+        axi_r_data  = data;
+        axi_r_resp  = resp;
+        axi_r_valid = 1'b1;
+
+        @(posedge clk_i);
+
+        @(negedge clk_i);
+
+        axi_r_valid = 1'b0;
+        axi_r_data  = '0;
+        axi_r_resp  = '0;
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Verify AXI Write Fields
+// ------------------------------------------------------------
+
+task automatic check_axi_write_fields(
+    input logic [ADDR_WIDTH-1:0] expected_addr,
+    input logic [2:0]            expected_prot,
+    input logic [DATA_WIDTH-1:0] expected_data,
+    input logic [DATA_WIDTH/8-1:0] expected_strb
+);
+    begin
+
+        check(captured_aw_id == '0,
+              "AXI AW ID is zero");
+
+        check(captured_aw_addr == expected_addr,
+              "AXI AW address is correctly propagated");
+
+        check(captured_aw_len == 8'd0,
+              "AXI AW LEN is zero for single-beat transaction");
+
+        check(captured_aw_size == AXI_SIZE,
+              "AXI AW SIZE matches DATA_WIDTH");
+
+        check(captured_aw_burst == AXI_INCR,
+              "AXI AW BURST is INCR");
+
+        check(captured_aw_lock == 1'b0,
+              "AXI AW LOCK is zero");
+
+        check(captured_aw_cache == '0,
+              "AXI AW CACHE is zero");
+
+        check(captured_aw_prot == expected_prot,
+              "AXI AW PROT is propagated");
+
+        check(captured_aw_qos == '0,
+              "AXI AW QOS is zero");
+
+        check(captured_aw_region == '0,
+              "AXI AW REGION is zero");
+
+        check(captured_aw_user == '0,
+              "AXI AW USER is zero");
+
+        check(captured_w_data == expected_data,
+              "AXI W DATA is correctly propagated");
+
+        check(captured_w_strb == expected_strb,
+              "AXI W STRB is correctly propagated");
+
+        check(captured_w_last == 1'b1,
+              "AXI W LAST is asserted for single-beat transaction");
+
+        check(captured_w_user == '0,
+              "AXI W USER is zero");
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Verify AXI Read Fields
+// ------------------------------------------------------------
+
+task automatic check_axi_read_fields(
+    input logic [ADDR_WIDTH-1:0] expected_addr,
+    input logic [2:0]            expected_prot
+);
+    begin
+
+        check(captured_ar_id == '0,
+              "AXI AR ID is zero");
+
+        check(captured_ar_addr == expected_addr,
+              "AXI AR address is correctly propagated");
+
+        check(captured_ar_len == 8'd0,
+              "AXI AR LEN is zero for single-beat transaction");
+
+        check(captured_ar_size == AXI_SIZE,
+              "AXI AR SIZE matches DATA_WIDTH");
+
+        check(captured_ar_burst == AXI_INCR,
+              "AXI AR BURST is INCR");
+
+        check(captured_ar_lock == 1'b0,
+              "AXI AR LOCK is zero");
+
+        check(captured_ar_cache == '0,
+              "AXI AR CACHE is zero");
+
+        check(captured_ar_prot == expected_prot,
+              "AXI AR PROT is propagated");
+
+        check(captured_ar_qos == '0,
+              "AXI AR QOS is zero");
+
+        check(captured_ar_region == '0,
+              "AXI AR REGION is zero");
+
+        check(captured_ar_user == '0,
+              "AXI AR USER is zero");
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 1: Simultaneous AXI-Lite AW and W
+// ------------------------------------------------------------
+
+task automatic test_write_simultaneous;
+    int start_aw_count;
+    int start_w_count;
+    begin
+
+        begin_test("WRITE_SIMULTANEOUS_AW_W");
+
+        start_aw_count = axi_aw_count;
+        start_w_count  = axi_w_count;
+
+        axi_aw_ready = 1'b1;
+        axi_w_ready  = 1'b1;
+
+        fork
+            send_axil_aw(32'h0000_1000, 3'b010);
+            send_axil_w (32'hDEAD_BEEF, 4'hF);
+        join
+
+        wait_cycles(2);
+
+        check(
+            axi_aw_count == start_aw_count + 1,
+            "Exactly one AXI AW transaction generated"
+        );
+
+        check(
+            axi_w_count == start_w_count + 1,
+            "Exactly one AXI W transaction generated"
+        );
+
+        check_axi_write_fields(
+            32'h0000_1000,
+            3'b010,
+            32'hDEAD_BEEF,
+            4'hF
+        );
+
+        fork
+            send_axi_b(2'b00);
+            receive_axil_b(2'b00);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 2: AW Before W
+// ------------------------------------------------------------
+
+task automatic test_write_aw_before_w;
+    int start_aw_count;
+    int start_w_count;
+    begin
+
+        begin_test("WRITE_AW_BEFORE_W");
+
+        start_aw_count = axi_aw_count;
+        start_w_count  = axi_w_count;
+
+        axi_aw_ready = 1'b1;
+        axi_w_ready  = 1'b1;
+
+        send_axil_aw(32'h0000_2000, 3'b001);
+
+        wait_cycles(3);
+
+        check(
+            axi_aw_count == start_aw_count,
+            "AXI AW is not issued before AXI-Lite W arrives"
+        );
+
+        check(
+            axi_w_count == start_w_count,
+            "AXI W is not issued before AXI-Lite W arrives"
+        );
+
+        send_axil_w(32'h1234_5678, 4'b1100);
+
+        wait_cycles(2);
+
+        check(
+            axi_aw_count == start_aw_count + 1,
+            "AXI AW issued after complete write request"
+        );
+
+        check(
+            axi_w_count == start_w_count + 1,
+            "AXI W issued after complete write request"
+        );
+
+        check_axi_write_fields(
+            32'h0000_2000,
+            3'b001,
+            32'h1234_5678,
+            4'b1100
+        );
+
+        fork
+            send_axi_b(2'b00);
+            receive_axil_b(2'b00);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 3: W Before AW
+// ------------------------------------------------------------
+
+task automatic test_write_w_before_aw;
+    int start_aw_count;
+    int start_w_count;
+    begin
+
+        begin_test("WRITE_W_BEFORE_AW");
+
+        start_aw_count = axi_aw_count;
+        start_w_count  = axi_w_count;
+
+        axi_aw_ready = 1'b1;
+        axi_w_ready  = 1'b1;
+
+        send_axil_w(32'hCAFE_BABE, 4'b0011);
+
+        wait_cycles(3);
+
+        check(
+            axi_aw_count == start_aw_count,
+            "AXI AW is not issued before AXI-Lite AW arrives"
+        );
+
+        check(
+            axi_w_count == start_w_count,
+            "AXI W is not issued before complete write request"
+        );
+
+        send_axil_aw(32'h0000_3000, 3'b000);
+
+        wait_cycles(2);
+
+        check(
+            axi_aw_count == start_aw_count + 1,
+            "Exactly one AXI AW generated"
+        );
+
+        check(
+            axi_w_count == start_w_count + 1,
+            "Exactly one AXI W generated"
+        );
+
+        check_axi_write_fields(
+            32'h0000_3000,
+            3'b000,
+            32'hCAFE_BABE,
+            4'b0011
+        );
+
+        fork
+            send_axi_b(2'b00);
+            receive_axil_b(2'b00);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 4: Independent AXI AW/W Backpressure
+// ------------------------------------------------------------
+
+task automatic test_write_axi_backpressure;
+    int start_aw_count;
+    int start_w_count;
+    begin
+
+        begin_test("WRITE_AXI_INDEPENDENT_BACKPRESSURE");
+
+        start_aw_count = axi_aw_count;
+        start_w_count  = axi_w_count;
+
+        // Block both AXI channels initially
+        axi_aw_ready = 1'b0;
+        axi_w_ready  = 1'b0;
+
+        fork
+            send_axil_aw(32'h0000_4000, 3'b011);
+            send_axil_w (32'hA5A5_5A5A, 4'b1111);
+        join
+
+        wait_cycles(2);
+
+        check(
+            m_req_o.aw_valid == 1'b1,
+            "AWVALID remains asserted while AXI AWREADY is low"
+        );
+
+        check(
+            m_req_o.w_valid == 1'b1,
+            "WVALID remains asserted while AXI WREADY is low"
+        );
+
+        check(
+            axi_aw_count == start_aw_count,
+            "No AXI AW handshake while AWREADY is low"
+        );
+
+        check(
+            axi_w_count == start_w_count,
+            "No AXI W handshake while WREADY is low"
+        );
+
+        // Accept AW only
+        @(negedge clk_i);
+        axi_aw_ready = 1'b1;
+
+        wait_cycles(1);
+
+        check(
+            axi_aw_count == start_aw_count + 1,
+            "AXI AW accepted independently"
+        );
+
+        check(
+            axi_w_count == start_w_count,
+            "AXI W remains pending"
+        );
+
+        check(
+            m_req_o.w_valid == 1'b1,
+            "WVALID remains asserted until W handshake"
+        );
+
+        // Accept W later
+        @(negedge clk_i);
+        axi_w_ready = 1'b1;
+
+        wait_cycles(1);
+
+        check(
+            axi_w_count == start_w_count + 1,
+            "AXI W accepted independently"
+        );
+
+        check_axi_write_fields(
+            32'h0000_4000,
+            3'b011,
+            32'hA5A5_5A5A,
+            4'b1111
+        );
+
+        fork
+            send_axi_b(2'b10);
+            receive_axil_b(2'b10);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 5: Read Transaction
+//
+// IMPORTANT:
+// This test checks that exactly one AXI AR transaction is issued.
+// Your currently supplied RTL is expected to fail this requirement
+// because it does not track completion of the AXI AR handshake.
+// ------------------------------------------------------------
+
+task automatic test_read_single_transaction;
+    int start_ar_count;
+    begin
+
+        begin_test("READ_SINGLE_TRANSACTION");
+
+        start_ar_count = axi_ar_count;
+
+        axi_ar_ready = 1'b1;
+
+        send_axil_ar(
+            32'h0000_5000,
+            3'b101
+        );
+
+        // Keep ARREADY high for several cycles.
+        // A correct bridge must generate exactly ONE AR handshake.
+        wait_cycles(4);
+
+        check(
+            axi_ar_count == start_ar_count + 1,
+            "Exactly one AXI AR transaction generated per AXI-Lite read"
+        );
+
+        check_axi_read_fields(
+            32'h0000_5000,
+            3'b101
+        );
+
+        fork
+            send_axi_r(32'hFACE_CAFE, 2'b00);
+            receive_axil_r(32'hFACE_CAFE, 2'b00);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 6: Read AXI Backpressure
+// ------------------------------------------------------------
+
+task automatic test_read_axi_backpressure;
+    int start_ar_count;
+    begin
+
+        begin_test("READ_AXI_BACKPRESSURE");
+
+        start_ar_count = axi_ar_count;
+
+        axi_ar_ready = 1'b0;
+
+        send_axil_ar(
+            32'h0000_6000,
+            3'b010
+        );
+
+        wait_cycles(2);
+
+        check(
+            m_req_o.ar_valid == 1'b1,
+            "ARVALID remains asserted while AXI ARREADY is low"
+        );
+
+        check(
+            axi_ar_count == start_ar_count,
+            "No AR handshake while AXI ARREADY is low"
+        );
+
+        @(negedge clk_i);
+        axi_ar_ready = 1'b1;
+
+        wait_cycles(1);
+
+        check(
+            axi_ar_count == start_ar_count + 1,
+            "AXI AR handshake occurs when ARREADY becomes high"
+        );
+
+        // Correct RTL must deassert ARVALID after handshake.
+        wait_cycles(1);
+
+        check(
+            m_req_o.ar_valid == 1'b0,
+            "ARVALID deasserts after AXI AR handshake"
+        );
+
+        fork
+            send_axi_r(32'h0BAD_F00D, 2'b10);
+            receive_axil_r(32'h0BAD_F00D, 2'b10);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 7: One Outstanding Transaction
+//
+// While a write transaction is active, a read should not be
+// accepted.
+// ------------------------------------------------------------
+
+task automatic test_single_outstanding_transaction;
+    begin
+
+        begin_test("SINGLE_OUTSTANDING_TRANSACTION");
+
+        axi_aw_ready = 1'b0;
+        axi_w_ready  = 1'b0;
+
+        fork
+            send_axil_aw(32'h0000_7000, 3'b000);
+            send_axil_w (32'h1111_2222, 4'hF);
+        join
+
+        wait_cycles(1);
+
+        check(
+            s_rsp_o.ar_ready == 1'b0,
+            "Read address is blocked while write transaction is active"
+        );
+
+        @(negedge clk_i);
+
+        s_req_i.ar.addr  = 32'h0000_8000;
+        s_req_i.ar.prot  = 3'b000;
+        s_req_i.ar_valid = 1'b1;
+
+        wait_cycles(2);
+
+        check(
+            !(s_req_i.ar_valid && s_rsp_o.ar_ready),
+            "AXI-Lite read is not accepted during outstanding write"
+        );
+
+        // Complete write
+        @(negedge clk_i);
+        axi_aw_ready = 1'b1;
+        axi_w_ready  = 1'b1;
+
+        wait_cycles(2);
+
+        fork
+            send_axi_b(2'b00);
+            receive_axil_b(2'b00);
+        join
+
+        // Read request should now be accepted
+        do begin
+            @(posedge clk_i);
+        end while (!s_rsp_o.ar_ready);
+
+        @(negedge clk_i);
+        s_req_i.ar_valid = 1'b0;
+
+        // Complete the read
+        axi_ar_ready = 1'b1;
+
+        wait_cycles(2);
+
+        fork
+            send_axi_r(32'h3333_4444, 2'b00);
+            receive_axil_r(32'h3333_4444, 2'b00);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Test 8: Partial Write Strobes
+// ------------------------------------------------------------
+
+task automatic test_write_partial_strobe;
+    int start_aw_count;
+    int start_w_count;
+    begin
+
+        begin_test("WRITE_PARTIAL_STROBE");
+
+        start_aw_count = axi_aw_count;
+        start_w_count  = axi_w_count;
+
+        axi_aw_ready = 1'b1;
+        axi_w_ready  = 1'b1;
+
+        fork
+            send_axil_aw(32'h0000_9000, 3'b100);
+            send_axil_w (32'h1122_3344, 4'b0101);
+        join
+
+        wait_cycles(2);
+
+        check(
+            axi_aw_count == start_aw_count + 1,
+            "One AXI AW generated for partial strobe write"
+        );
+
+        check(
+            axi_w_count == start_w_count + 1,
+            "One AXI W generated for partial strobe write"
+        );
+
+        check(
+            captured_w_strb == 4'b0101,
+            "AXI-Lite WSTRB is preserved exactly"
+        );
+
+        fork
+            send_axi_b(2'b11);
+            receive_axil_b(2'b11);
+        join
+
+        wait_cycles(2);
+
+    end
+endtask
+
+
+// ------------------------------------------------------------
+// Main Test Sequence
+// ------------------------------------------------------------
+
+initial begin
+
+    test_count  = 0;
+    error_count = 0;
+
+    reset_dut();
+
+    // Write path tests
+    test_write_simultaneous();
+    test_write_aw_before_w();
+    test_write_w_before_aw();
+    test_write_axi_backpressure();
+    test_write_partial_strobe();
+
+    // Read path tests
+    test_read_single_transaction();
+    test_read_axi_backpressure();
+
+    // Arbitration / outstanding transaction test
+    test_single_outstanding_transaction();
+
+
+    // --------------------------------------------------------
+    // Final Result
+    // --------------------------------------------------------
 
     $display("");
-    $display("[%0t] RESET RELEASED", $time);
-    $display("");
-  end
+    $display("============================================================");
+    $display("SIMULATION COMPLETE");
+    $display("============================================================");
+    $display("TOTAL TESTS : %0d", test_count);
+    $display("ERRORS      : %0d", error_count);
+    $display("============================================================");
 
-
-  // ==========================================================================
-  // AXI TYPES
-  // ==========================================================================
-
-  `AXIL_T(axil, ADDR_WIDTH, DATA_WIDTH)
-  `AXI_T(axi, ID_WIDTH, ADDR_WIDTH, DATA_WIDTH, USER_WIDTH)
-
-
-  // ==========================================================================
-  // DUT INTERFACE SIGNALS
-  // ==========================================================================
-
-  axil_req_t s_axi_req;
-  axil_rsp_t s_axi_rsp;
-
-  axi_req_t  m_axi_req;
-  axi_rsp_t  m_axi_rsp;
-
-
-  // ==========================================================================
-  // DUT
-  // ==========================================================================
-
-  adn_axi_axil_to_axi #(
-      .ID_WIDTH  (ID_WIDTH),
-      .ADDR_WIDTH(ADDR_WIDTH),
-      .DATA_WIDTH(DATA_WIDTH),
-      .USER_WIDTH(USER_WIDTH),
-
-      .AXI_AWID(AXI_AWID),
-      .AXI_ARID(AXI_ARID),
-
-      .AXI_CACHE (AXI_CACHE),
-      .AXI_QOS   (AXI_QOS),
-      .AXI_REGION(AXI_REGION)
-  ) dut (
-      .clk    (clk),
-      .aresetn(aresetn),
-
-      .s_axi_req(s_axi_req),
-      .s_axi_rsp(s_axi_rsp),
-
-      .m_axi_req(m_axi_req),
-      .m_axi_rsp(m_axi_rsp)
-  );
-
-
-  // ==========================================================================
-  // TESTBENCH VARIABLES
-  // ==========================================================================
-
-  int errors = 0;
-
-  logic [ADDR_WIDTH-1:0] test_addr;
-  logic [DATA_WIDTH-1:0] test_wdata;
-  logic [BYTE_WIDTH-1:0] test_strb;
-
-  logic [DATA_WIDTH-1:0] expected_rdata;
-
-
-  // ==========================================================================
-  // INITIAL SIGNAL VALUES
-  // ==========================================================================
-
-  initial begin
-    s_axi_req = '0;
-    m_axi_rsp = '0;
-  end
-
-
-  // ==========================================================================
-  // UTILITY: CHECK
-  // ==========================================================================
-
-  task automatic check(input bit condition, input string message);
-    begin
-      if (condition) begin
-        $display("[%0t] CHECK PASSED: %s", $time, message);
-      end else begin
-        $error("[%0t] CHECK FAILED: %s", $time, message);
-        errors++;
-      end
+    if (error_count == 0) begin
+        $display("");
+        $display("############################################");
+        $display("#                                          #");
+        $display("#              ALL TESTS PASSED            #");
+        $display("#                                          #");
+        $display("############################################");
     end
-  endtask
-
-
-  // ==========================================================================
-  // AXI-LITE WRITE
-  //
-  // expected_bresp allows both normal and error-response testing.
-  // ==========================================================================
-
-  task automatic axil_write(input logic [ADDR_WIDTH-1:0] addr, input logic [DATA_WIDTH-1:0] data,
-                            input logic [BYTE_WIDTH-1:0] strb, input logic [2:0] prot = 3'b000,
-                            input logic [1:0] expected_bresp = 2'b00);
-
-    bit aw_done;
-    bit w_done;
-    bit b_done;
-
-    int timeout;
-
-    begin
-
-      aw_done = 1'b0;
-      w_done  = 1'b0;
-      b_done  = 1'b0;
-      timeout = 0;
-
-      $display("");
-      $display("============================================================");
-      $display("AXI-LITE WRITE");
-      $display("  ADDR = 0x%08h", addr);
-      $display("  DATA = 0x%08h", data);
-      $display("  STRB = 0x%0h", strb);
-      $display("  EXPECTED BRESP = %02b", expected_bresp);
-      $display("============================================================");
-
-      // ----------------------------------------------------------
-      // Present AW and W.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.aw.addr  <= addr;
-      s_axi_req.aw.prot  <= prot;
-      s_axi_req.aw_valid <= 1'b1;
-
-      s_axi_req.w.data   <= data;
-      s_axi_req.w.strb   <= strb;
-      s_axi_req.w_valid  <= 1'b1;
-
-      // ----------------------------------------------------------
-      // Wait for AW/W handshakes.
-      // ----------------------------------------------------------
-
-      while (!(aw_done && w_done)) begin
-
-        @(posedge clk);
-
-        if (!aw_done && s_axi_req.aw_valid && s_axi_rsp.aw_ready) begin
-
-          aw_done = 1'b1;
-
-          $display("[%0t] AXI-Lite AW HANDSHAKE", $time);
-
-          @(negedge clk);
-          s_axi_req.aw_valid <= 1'b0;
-
-        end
-
-        if (!w_done && s_axi_req.w_valid && s_axi_rsp.w_ready) begin
-
-          w_done = 1'b1;
-
-          $display("[%0t] AXI-Lite W HANDSHAKE", $time);
-
-          @(negedge clk);
-          s_axi_req.w_valid <= 1'b0;
-
-        end
-
-        timeout++;
-
-        if (timeout > 100) begin
-
-          $error("[%0t] AXI-Lite WRITE TIMEOUT waiting for AW/W", $time);
-
-          errors++;
-          break;
-
-        end
-
-      end
-
-      // ----------------------------------------------------------
-      // Assert BREADY.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.b_ready <= 1'b1;
-
-      timeout = 0;
-
-      // ----------------------------------------------------------
-      // Wait for B response.
-      // ----------------------------------------------------------
-
-      while (!b_done) begin
-
-        @(posedge clk);
-
-        if (s_axi_rsp.b_valid && s_axi_req.b_ready) begin
-
-          b_done = 1'b1;
-
-          $display("[%0t] AXI-Lite B HANDSHAKE BRESP=%02b", $time, s_axi_rsp.b.resp);
-
-          check(s_axi_rsp.b.resp == expected_bresp, $sformatf(
-                "AXI-Lite BRESP == expected %02b", expected_bresp));
-
-          @(negedge clk);
-          s_axi_req.b_ready <= 1'b0;
-
-        end
-
-        timeout++;
-
-        if (timeout > 100) begin
-
-          $error("[%0t] AXI-Lite WRITE TIMEOUT waiting for B response", $time);
-
-          errors++;
-          break;
-
-        end
-
-      end
-
-      check(aw_done, "AXI-Lite AW channel completed");
-
-      check(w_done, "AXI-Lite W channel completed");
-
-      check(b_done, "AXI-Lite B channel completed");
-
-      $display("[%0t] AXI-Lite WRITE COMPLETE", $time);
-
+    else begin
+        $display("");
+        $display("############################################");
+        $display("#                                          #");
+        $display("#              TESTS FAILED                #");
+        $display("#         ERROR COUNT = %0d               #", error_count);
+        $display("#                                          #");
+        $display("############################################");
     end
 
-  endtask
-
-
-  // ==========================================================================
-  // AXI-LITE READ
-  // ==========================================================================
-
-  task automatic axil_read(input logic [ADDR_WIDTH-1:0] addr, output logic [DATA_WIDTH-1:0] data);
-
-    bit ar_done;
-    bit r_done;
-
-    int timeout;
-
-    begin
-
-      ar_done = 0;
-      r_done  = 0;
-      data    = '0;
-      timeout = 0;
-
-      $display("");
-      $display("============================================================");
-      $display("AXI-LITE READ");
-      $display("  ADDR = 0x%08h", addr);
-      $display("============================================================");
-
-      // ----------------------------------------------------------
-      // Drive AR before rising edge.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.ar.addr  <= addr;
-      s_axi_req.ar.prot  <= 3'b000;
-      s_axi_req.ar_valid <= 1'b1;
-
-      // ----------------------------------------------------------
-      // Wait for AR handshake.
-      // ----------------------------------------------------------
-
-      while (!ar_done) begin
-
-        @(posedge clk);
-
-        if (s_axi_req.ar_valid && s_axi_rsp.ar_ready) begin
-
-          ar_done = 1;
-
-          $display("[%0t] AXI-Lite AR HANDSHAKE", $time);
-
-          s_axi_req.ar_valid <= 1'b0;
-        end
-
-        timeout++;
-
-        if (timeout > 100) begin
-          $error("[%0t] AXI-Lite READ TIMEOUT waiting for AR", $time);
-          errors++;
-          break;
-        end
-
-      end
-
-      // ----------------------------------------------------------
-      // Ready for R response.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.ar_valid <= 1'b0;
-      s_axi_req.r_ready  <= 1'b1;
-
-      timeout = 0;
-
-      while (!r_done) begin
-
-        @(posedge clk);
-
-        if (s_axi_rsp.r_valid && s_axi_req.r_ready) begin
-
-          r_done = 1;
-
-          data   = s_axi_rsp.r.data;
-
-          $display("[%0t] AXI-Lite R HANDSHAKE RRESP=%02b DATA=0x%08h", $time, s_axi_rsp.r.resp,
-                   s_axi_rsp.r.data);
-
-          check(s_axi_rsp.r.resp == 2'b00, "AXI-Lite RRESP == OKAY");
-
-          s_axi_req.r_ready <= 1'b0;
-        end
-
-        timeout++;
-
-        if (timeout > 100) begin
-          $error("[%0t] AXI-Lite READ TIMEOUT waiting for R response", $time);
-          errors++;
-          break;
-        end
-
-      end
-
-      // ----------------------------------------------------------
-      // Final cleanup.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.ar_valid <= 1'b0;
-      s_axi_req.r_ready  <= 1'b0;
-
-      $display("[%0t] AXI-Lite READ COMPLETE", $time);
-
-    end
-
-  endtask
-
-  // ==========================================================================
-  // AXI WRITE SLAVE
-  //
-  // The AXI slave accepts AW and W independently.
-  // This is important because AXI permits AW and W to arrive independently.
-  // ==========================================================================
-
-  task automatic axi_write_slave(
-      input logic [ADDR_WIDTH-1:0] expected_addr, input logic [DATA_WIDTH-1:0] expected_data,
-      input logic [BYTE_WIDTH-1:0] expected_strb, input logic [1:0] response);
-
-    bit aw_seen;
-    bit w_seen;
-
-    int timeout;
-
-    begin
-
-      aw_seen = 0;
-      w_seen  = 0;
-      timeout = 0;
-
-      // ----------------------------------------------------------
-      // Slave ready for AW and W.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      m_axi_rsp.aw_ready <= 1'b1;
-      m_axi_rsp.w_ready  <= 1'b1;
-
-      while (!(aw_seen && w_seen)) begin
-
-        @(posedge clk);
-
-        // --------------------------------------------------------
-        // AW handshake
-        // --------------------------------------------------------
-
-        if (!aw_seen && m_axi_req.aw_valid && m_axi_rsp.aw_ready) begin
-
-          aw_seen = 1;
-
-          $display("");
-          $display("[%0t] AXI AW HANDSHAKE", $time);
-          $display("  ID     = 0x%0h", m_axi_req.aw.id);
-          $display("  ADDR   = 0x%08h", m_axi_req.aw.addr);
-          $display("  LEN    = %0d", m_axi_req.aw.len);
-          $display("  SIZE   = %0d", m_axi_req.aw.size);
-          $display("  BURST  = %03b", m_axi_req.aw.burst);
-          $display("  LOCK   = %0b", m_axi_req.aw.lock);
-          $display("  CACHE  = %04b", m_axi_req.aw.cache);
-          $display("  PROT   = %03b", m_axi_req.aw.prot);
-          $display("  QOS    = %04b", m_axi_req.aw.qos);
-          $display("  REGION = %04b", m_axi_req.aw.region);
-
-          check(m_axi_req.aw.id == AXI_AWID, "AXI AWID");
-
-          check(m_axi_req.aw.addr == expected_addr, "AXI AWADDR");
-
-          check(m_axi_req.aw.len == 8'd0, "AXI AWLEN == 0");
-
-          check(m_axi_req.aw.size == EXPECTED_AXI_SIZE, "AXI AWSIZE == 2");
-
-          check(m_axi_req.aw.burst == 3'b001, "AXI AWBURST == INCR");
-
-          check(m_axi_req.aw.lock == 1'b0, "AXI AWLOCK == 0");
-
-          check(m_axi_req.aw.cache == AXI_CACHE, "AXI AWCACHE");
-
-          check(m_axi_req.aw.prot == 3'b000, "AXI AWPROT");
-
-          check(m_axi_req.aw.qos == AXI_QOS, "AXI AWQOS");
-
-          check(m_axi_req.aw.region == AXI_REGION, "AXI AWREGION");
-        end
-
-        // --------------------------------------------------------
-        // W handshake
-        // --------------------------------------------------------
-
-        if (!w_seen && m_axi_req.w_valid && m_axi_rsp.w_ready) begin
-
-          w_seen = 1;
-
-          $display("");
-          $display("[%0t] AXI W HANDSHAKE", $time);
-          $display("  DATA = 0x%08h", m_axi_req.w.data);
-          $display("  STRB = 0x%0h", m_axi_req.w.strb);
-          $display("  LAST = %0b", m_axi_req.w.last);
-
-          check(m_axi_req.w.data == expected_data, "AXI WDATA");
-
-          check(m_axi_req.w.strb == expected_strb, "AXI WSTRB");
-
-          check(m_axi_req.w.last == 1'b1, "AXI WLAST == 1");
-        end
-
-        timeout++;
-
-        if (timeout > 100) begin
-          $error("[%0t] AXI WRITE SLAVE TIMEOUT waiting for AW/W", $time);
-          errors++;
-          break;
-        end
-
-      end
-
-      // ----------------------------------------------------------
-      // Stop accepting new AW/W.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      m_axi_rsp.aw_ready <= 1'b0;
-      m_axi_rsp.w_ready  <= 1'b0;
-
-      // ----------------------------------------------------------
-      // Generate B response.
-      //
-      // Keep BVALID asserted until BREADY.
-      // ----------------------------------------------------------
-
-      m_axi_rsp.b.resp   <= response;
-      m_axi_rsp.b_valid  <= 1'b1;
-
-      $display("[%0t] AXI B RESPONSE ASSERTED BRESP=%02b", $time, response);
-
-      timeout = 0;
-
-      while (!(m_axi_rsp.b_valid && m_axi_req.b_ready)) begin
-
-        @(posedge clk);
-
-        timeout++;
-
-        if (timeout > 100) begin
-          $error("[%0t] AXI WRITE SLAVE TIMEOUT waiting for BREADY", $time);
-          errors++;
-          break;
-        end
-
-      end
-
-      if (m_axi_rsp.b_valid && m_axi_req.b_ready) begin
-
-        $display("[%0t] AXI B HANDSHAKE", $time);
-
-      end
-
-      @(negedge clk);
-
-      m_axi_rsp.b_valid <= 1'b0;
-      m_axi_rsp.b.resp  <= 2'b00;
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // AXI READ SLAVE
-  // ==========================================================================
-
-  task automatic axi_read_slave(input logic [ADDR_WIDTH-1:0] expected_addr,
-                                input logic [DATA_WIDTH-1:0] read_data, input logic [1:0] response);
-
-    bit ar_seen;
-
-    int timeout;
-
-    begin
-
-      ar_seen = 0;
-      timeout = 0;
-
-      // ----------------------------------------------------------
-      // Slave ready for AR.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      m_axi_rsp.ar_ready <= 1'b1;
-
-      // ----------------------------------------------------------
-      // Wait for AR.
-      // ----------------------------------------------------------
-
-      while (!ar_seen) begin
-
-        @(posedge clk);
-
-        if (m_axi_req.ar_valid && m_axi_rsp.ar_ready) begin
-
-          ar_seen = 1;
-
-          $display("");
-          $display("[%0t] AXI AR HANDSHAKE", $time);
-          $display("  ID     = 0x%0h", m_axi_req.ar.id);
-          $display("  ADDR   = 0x%08h", m_axi_req.ar.addr);
-          $display("  LEN    = %0d", m_axi_req.ar.len);
-          $display("  SIZE   = %0d", m_axi_req.ar.size);
-          $display("  BURST  = %03b", m_axi_req.ar.burst);
-          $display("  LOCK   = %0b", m_axi_req.ar.lock);
-          $display("  CACHE  = %04b", m_axi_req.ar.cache);
-          $display("  PROT   = %03b", m_axi_req.ar.prot);
-          $display("  QOS    = %04b", m_axi_req.ar.qos);
-          $display("  REGION = %04b", m_axi_req.ar.region);
-
-          check(m_axi_req.ar.id == AXI_ARID, "AXI ARID");
-
-          check(m_axi_req.ar.addr == expected_addr, "AXI ARADDR");
-
-          check(m_axi_req.ar.len == 8'd0, "AXI ARLEN == 0");
-
-          check(m_axi_req.ar.size == EXPECTED_AXI_SIZE, "AXI ARSIZE == 2");
-
-          check(m_axi_req.ar.burst == 3'b001, "AXI ARBURST == INCR");
-
-          check(m_axi_req.ar.lock == 1'b0, "AXI ARLOCK == 0");
-
-          check(m_axi_req.ar.cache == AXI_CACHE, "AXI ARCACHE");
-
-          check(m_axi_req.ar.prot == 3'b000, "AXI ARPROT");
-
-          check(m_axi_req.ar.qos == AXI_QOS, "AXI ARQOS");
-
-          check(m_axi_req.ar.region == AXI_REGION, "AXI ARREGION");
-        end
-
-        timeout++;
-
-        if (timeout > 100) begin
-          $error("[%0t] AXI READ SLAVE TIMEOUT waiting for AR", $time);
-          errors++;
-          break;
-        end
-
-      end
-
-      // ----------------------------------------------------------
-      // Stop accepting AR.
-      // ----------------------------------------------------------
-
-      @(negedge clk);
-
-      m_axi_rsp.ar_ready <= 1'b0;
-
-      // ----------------------------------------------------------
-      // Generate R response.
-      // ----------------------------------------------------------
-
-      m_axi_rsp.r.data   <= read_data;
-      m_axi_rsp.r.resp   <= response;
-      m_axi_rsp.r.last   <= 1'b1;
-      m_axi_rsp.r_valid  <= 1'b1;
-
-      $display("[%0t] AXI R RESPONSE ASSERTED DATA=0x%08h RRESP=%02b", $time, read_data, response);
-
-      timeout = 0;
-
-      while (!(m_axi_rsp.r_valid && m_axi_req.r_ready)) begin
-
-        @(posedge clk);
-
-        timeout++;
-
-        if (timeout > 100) begin
-          $error("[%0t] AXI READ SLAVE TIMEOUT waiting for RREADY", $time);
-          errors++;
-          break;
-        end
-
-      end
-
-      if (m_axi_rsp.r_valid && m_axi_req.r_ready) begin
-
-        $display("[%0t] AXI R HANDSHAKE", $time);
-
-      end
-
-      @(negedge clk);
-
-      m_axi_rsp.r_valid <= 1'b0;
-      m_axi_rsp.r.data  <= '0;
-      m_axi_rsp.r.resp  <= 2'b00;
-      m_axi_rsp.r.last  <= 1'b0;
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // TEST 1: NORMAL WRITE
-  // ==========================================================================
-
-  task automatic test_normal_write;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 1: NORMAL WRITE");
-      $display("############################################################");
-
-      test_addr  = 32'h0000_1000;
-      test_wdata = 32'hDEAD_BEEF;
-      test_strb  = 4'b1111;
-
-      fork
-
-        begin
-          axil_write(test_addr, test_wdata, test_strb);
-        end
-
-        begin
-          axi_write_slave(test_addr, test_wdata, test_strb, 2'b00);
-        end
-
-      join
-
-      $display("");
-      $display("******** TEST 1 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // TEST 2: NORMAL READ
-  // ==========================================================================
-
-  task automatic test_normal_read;
-
-    logic [DATA_WIDTH-1:0] read_data;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 2: NORMAL READ");
-      $display("############################################################");
-
-      test_addr      = 32'h0000_2000;
-      expected_rdata = 32'hCAFE_BABE;
-
-      fork
-
-        begin
-
-          axil_read(test_addr, read_data);
-
-          check(read_data == expected_rdata, "AXI-Lite read data matches expected data");
-
-        end
-
-        begin
-
-          axi_read_slave(test_addr, expected_rdata, 2'b00);
-
-        end
-
-      join
-
-      $display("");
-      $display("******** TEST 2 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // TEST 3: W BEFORE AW
-  //
-  // AXI-Lite permits W to arrive before AW.
-  // ==========================================================================
-
-  task automatic test_w_before_aw;
-
-    bit w_done;
-    bit aw_done;
-    bit b_done;
-
-    int timeout;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 3: W BEFORE AW");
-      $display("############################################################");
-
-      test_addr = 32'h0000_3000;
-      test_wdata = 32'h1234_5678;
-      test_strb = 4'b1010;
-
-      w_done = 0;
-      aw_done = 0;
-      b_done = 0;
-
-      // ----------------------------------------------------------------------
-      // Make absolutely sure no request signals from a previous transaction
-      // remain asserted.
-      // ----------------------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.aw_valid <= 1'b0;
-      s_axi_req.w_valid  <= 1'b0;
-      s_axi_req.b_ready  <= 1'b0;
-
-      // ----------------------------------------------------------------------
-      // Master + AXI slave
-      // ----------------------------------------------------------------------
-
-      fork
-
-        // ====================================================================
-        // AXI-Lite MASTER
-        // ====================================================================
-
-        begin : AXIL_W_FIRST
-
-          // ------------------------------------------------------------
-          // Drive W FIRST.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.w.data  <= test_wdata;
-          s_axi_req.w.strb  <= test_strb;
-          s_axi_req.w_valid <= 1'b1;
-
-          $display("[%0t] AXI-Lite W VALID ASSERTED (BEFORE AW)", $time);
-
-          // ------------------------------------------------------------
-          // Wait for W handshake.
-          // ------------------------------------------------------------
-
-          timeout = 0;
-
-          while (!w_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_req.w_valid && s_axi_rsp.w_ready) begin
-
-              w_done = 1;
-
-              $display("[%0t] AXI-Lite W HANDSHAKE (W BEFORE AW)", $time);
-
-              timeout = 0;
-            end else begin
-
-              timeout++;
-
-              if (timeout > 100) begin
-                $error("[%0t] TEST 3 timeout waiting for AXI-Lite W handshake", $time);
-                errors++;
-                break;
-              end
-
-            end
-
-          end
-
-          // ------------------------------------------------------------
-          // Deassert W cleanly.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.w_valid <= 1'b0;
-
-          // ------------------------------------------------------------
-          // Deliberately wait before sending AW.
-          // ------------------------------------------------------------
-
-          repeat (2) @(negedge clk);
-
-          // ------------------------------------------------------------
-          // Drive AW AFTER W.
-          // ------------------------------------------------------------
-
-          s_axi_req.aw.addr  <= test_addr;
-          s_axi_req.aw.prot  <= 3'b000;
-          s_axi_req.aw_valid <= 1'b1;
-
-          $display("[%0t] AXI-Lite AW VALID ASSERTED (AFTER W)", $time);
-
-          // ------------------------------------------------------------
-          // Wait for AW handshake.
-          // ------------------------------------------------------------
-
-          timeout = 0;
-
-          while (!aw_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_req.aw_valid && s_axi_rsp.aw_ready) begin
-
-              aw_done = 1;
-
-              $display("[%0t] AXI-Lite AW HANDSHAKE (AFTER W)", $time);
-
-              timeout = 0;
-            end else begin
-
-              timeout++;
-
-              if (timeout > 100) begin
-                $error("[%0t] TEST 3 timeout waiting for AXI-Lite AW handshake", $time);
-                errors++;
-                break;
-              end
-
-            end
-
-          end
-
-          // ------------------------------------------------------------
-          // Deassert AW.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.aw_valid <= 1'b0;
-
-          // ------------------------------------------------------------
-          // Wait for B response.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.b_ready <= 1'b1;
-
-          timeout = 0;
-
-          while (!b_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_rsp.b_valid && s_axi_req.b_ready) begin
-
-              b_done = 1;
-
-              $display("[%0t] AXI-Lite B HANDSHAKE (W BEFORE AW) BRESP=%02b", $time,
-                       s_axi_rsp.b.resp);
-
-              check(s_axi_rsp.b.resp == 2'b00, "W-before-AW BRESP == OKAY");
-
-            end else begin
-
-              timeout++;
-
-              if (timeout > 100) begin
-                $error("[%0t] TEST 3 timeout waiting for AXI-Lite B response", $time);
-                errors++;
-                break;
-              end
-
-            end
-
-          end
-
-          // ------------------------------------------------------------
-          // Deassert BREADY.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.b_ready <= 1'b0;
-
-        end
-
-
-        // ====================================================================
-        // AXI SLAVE
-        // ====================================================================
-
-        begin : AXI_SLAVE_W_FIRST
-
-          axi_write_slave(test_addr, test_wdata, test_strb, 2'b00);
-
-        end
-
-      join
-
-      // ----------------------------------------------------------------------
-      // Final transaction check.
-      // ----------------------------------------------------------------------
-
-      check(w_done, "W-before-AW W channel completed");
-
-      check(aw_done, "W-before-AW AW channel completed");
-
-      check(b_done, "W-before-AW B channel completed");
-
-      check(w_done && aw_done && b_done, "W-before-AW transaction completed");
-
-      // ----------------------------------------------------------------------
-      // Cleanup.
-      // ----------------------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.aw_valid <= 1'b0;
-      s_axi_req.w_valid  <= 1'b0;
-      s_axi_req.b_ready  <= 1'b0;
-
-      $display("");
-      $display("******** TEST 3 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // TEST 4: AW BEFORE W
-  //
-  // Explicitly verify the opposite ordering.
-  // ==========================================================================
-
-  task automatic test_aw_before_w;
-
-    bit aw_done;
-    bit w_done;
-    bit b_done;
-
-    int timeout;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 4: AW BEFORE W");
-      $display("############################################################");
-
-      test_addr = 32'h0000_4000;
-      test_wdata = 32'hA5A5_5A5A;
-      test_strb = 4'b0101;
-
-      aw_done = 0;
-      w_done = 0;
-      b_done = 0;
-
-      // ----------------------------------------------------------------------
-      // Clean up any signals left by previous transaction.
-      // ----------------------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.aw_valid <= 1'b0;
-      s_axi_req.w_valid  <= 1'b0;
-      s_axi_req.b_ready  <= 1'b0;
-
-      // ----------------------------------------------------------------------
-      // Master + AXI slave
-      // ----------------------------------------------------------------------
-
-      fork
-
-        // ====================================================================
-        // AXI-Lite MASTER
-        // ====================================================================
-
-        begin : AXIL_AW_FIRST
-
-          // ------------------------------------------------------------
-          // Drive AW FIRST.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.aw.addr  <= test_addr;
-          s_axi_req.aw.prot  <= 3'b000;
-          s_axi_req.aw_valid <= 1'b1;
-
-          $display("[%0t] AXI-Lite AW VALID ASSERTED (BEFORE W)", $time);
-
-          // ------------------------------------------------------------
-          // Wait for AW handshake.
-          // ------------------------------------------------------------
-
-          timeout = 0;
-
-          while (!aw_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_req.aw_valid && s_axi_rsp.aw_ready) begin
-
-              aw_done = 1;
-
-              $display("[%0t] AXI-Lite AW HANDSHAKE (AW BEFORE W)", $time);
-
-              timeout = 0;
-            end else begin
-
-              timeout++;
-
-              if (timeout > 100) begin
-                $error("[%0t] TEST 4 timeout waiting for AXI-Lite AW handshake", $time);
-                errors++;
-                break;
-              end
-
-            end
-
-          end
-
-          // ------------------------------------------------------------
-          // Deassert AW.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.aw_valid <= 1'b0;
-
-          // ------------------------------------------------------------
-          // Deliberately wait before sending W.
-          // ------------------------------------------------------------
-
-          repeat (2) @(negedge clk);
-
-          // ------------------------------------------------------------
-          // Drive W AFTER AW.
-          // ------------------------------------------------------------
-
-          s_axi_req.w.data  <= test_wdata;
-          s_axi_req.w.strb  <= test_strb;
-          s_axi_req.w_valid <= 1'b1;
-
-          $display("[%0t] AXI-Lite W VALID ASSERTED (AFTER AW)", $time);
-
-          // ------------------------------------------------------------
-          // Wait for W handshake.
-          // ------------------------------------------------------------
-
-          timeout = 0;
-
-          while (!w_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_req.w_valid && s_axi_rsp.w_ready) begin
-
-              w_done = 1;
-
-              $display("[%0t] AXI-Lite W HANDSHAKE (AFTER AW)", $time);
-
-              timeout = 0;
-            end else begin
-
-              timeout++;
-
-              if (timeout > 100) begin
-                $error("[%0t] TEST 4 timeout waiting for AXI-Lite W handshake", $time);
-                errors++;
-                break;
-              end
-
-            end
-
-          end
-
-          // ------------------------------------------------------------
-          // Deassert W.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.w_valid <= 1'b0;
-
-          // ------------------------------------------------------------
-          // Wait for B response.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.b_ready <= 1'b1;
-
-          timeout = 0;
-
-          while (!b_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_rsp.b_valid && s_axi_req.b_ready) begin
-
-              b_done = 1;
-
-              $display("[%0t] AXI-Lite B HANDSHAKE (AW BEFORE W) BRESP=%02b", $time,
-                       s_axi_rsp.b.resp);
-
-              check(s_axi_rsp.b.resp == 2'b00, "AW-before-W BRESP == OKAY");
-
-            end else begin
-
-              timeout++;
-
-              if (timeout > 100) begin
-                $error("[%0t] TEST 4 timeout waiting for AXI-Lite B response", $time);
-                errors++;
-                break;
-              end
-
-            end
-
-          end
-
-          // ------------------------------------------------------------
-          // Deassert BREADY.
-          // ------------------------------------------------------------
-
-          @(negedge clk);
-
-          s_axi_req.b_ready <= 1'b0;
-
-        end
-
-
-        // ====================================================================
-        // AXI SLAVE
-        // ====================================================================
-
-        begin : AXI_SLAVE_AW_FIRST
-
-          axi_write_slave(test_addr, test_wdata, test_strb, 2'b00);
-
-        end
-
-      join
-
-      // ----------------------------------------------------------------------
-      // Final transaction check.
-      // ----------------------------------------------------------------------
-
-      check(aw_done, "AW-before-W AW channel completed");
-
-      check(w_done, "AW-before-W W channel completed");
-
-      check(b_done, "AW-before-W B channel completed");
-
-      check(aw_done && w_done && b_done, "AW-before-W transaction completed");
-
-      // ----------------------------------------------------------------------
-      // Cleanup.
-      // ----------------------------------------------------------------------
-
-      @(negedge clk);
-
-      s_axi_req.aw_valid <= 1'b0;
-      s_axi_req.w_valid  <= 1'b0;
-      s_axi_req.b_ready  <= 1'b0;
-
-      $display("");
-      $display("******** TEST 4 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // TEST 5: PARTIAL WRITE / WSTRB
-  // ==========================================================================
-
-  task automatic test_partial_write;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 5: PARTIAL WRITE / WSTRB");
-      $display("############################################################");
-
-      test_addr  = 32'h0000_5000;
-      test_wdata = 32'hFACE_B00C;
-      test_strb  = 4'b0101;
-
-      fork
-
-        begin
-          axil_write(test_addr, test_wdata, test_strb);
-        end
-
-        begin
-          axi_write_slave(test_addr, test_wdata, test_strb, 2'b00);
-        end
-
-      join
-
-      $display("");
-      $display("******** TEST 5 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  ////////////////////////////////////////////////////////////
-  // TEST 6: WRITE ERROR RESPONSE
-  ////////////////////////////////////////////////////////////
-  
-  task test_write_error;
-  
-      $display("\n############################################################");
-      $display("# TEST 6: WRITE ERROR RESPONSE");
-      $display("############################################################");
-  
-      fork
-          begin
-              // AXI-Lite master write
-              axil_write(
-                  32'h00006000,
-                  32'h11112222,
-                  4'hf
-              );
-          
-              $display("[%0t] AXI-Lite WRITE ERROR REQUEST COMPLETE", $time);
-          end
-        
-          begin
-              // AXI slave generates error response
-              wait(axi_awvalid && axi_awready);
-          
-              $display("[%0t] AXI AW HANDSHAKE", $time);
-              $display("  ID     = 0x%0h", axi_awid);
-              $display("  ADDR   = 0x%08h", axi_awaddr);
-              $display("  LEN    = %0d", axi_awlen);
-              $display("  SIZE   = %0d", axi_awsize);
-              $display("  BURST  = %03b", axi_awburst);
-          
-              check(axi_awaddr == 32'h00006000,
-                    "Write-error AXI AWADDR");
-          
-              wait(axi_wvalid && axi_wready);
-          
-              $display("[%0t] AXI W HANDSHAKE", $time);
-              $display("  DATA = 0x%08h", axi_wdata);
-              $display("  STRB = 0x%0h", axi_wstrb);
-              $display("  LAST = %0d", axi_wlast);
-          
-              check(axi_wdata == 32'h11112222,
-                    "Write-error AXI WDATA");
-          
-              check(axi_wstrb == 4'hf,
-                    "Write-error AXI WSTRB");
-          
-              check(axi_wlast == 1'b1,
-                    "Write-error AXI WLAST");
-          
-              // Return AXI SLVERR
-              axi_bvalid <= 1'b1;
-              axi_bresp  <= 2'b10;
-              axi_bid    <= axi_awid;
-          
-              wait(axi_bready);
-          
-              $display("[%0t] AXI B HANDSHAKE BRESP=10", $time);
-          
-              axi_bvalid <= 1'b0;
-          
-          end
-      join
-    
-    
-      wait(axil_bvalid);
-    
-      $display("[%0t] AXI-Lite B HANDSHAKE BRESP=%02b",
-               $time, axil_bresp);
-    
-      check(axil_bresp == 2'b10,
-            "AXI-Lite BRESP propagates SLVERR");
-    
-    
-      check(axil_aw_done,
-            "Write-error AW channel completed");
-    
-      check(axil_w_done,
-            "Write-error W channel completed");
-    
-      check(axil_b_done,
-            "Write-error AXI-Lite B channel completed");
-    
-    
-      $display("\n******** TEST 6 COMPLETE ********\n");
-    
-  endtask
-  
-  
-  
-  ////////////////////////////////////////////////////////////
-  // TEST 7: READ ERROR RESPONSE
-  ////////////////////////////////////////////////////////////
-  
-  task test_read_error;
-  
-      logic [31:0] rdata;
-  
-      $display("\n############################################################");
-      $display("# TEST 7: READ ERROR RESPONSE");
-      $display("############################################################");
-  
-  
-      // AXI slave response generation
-      fork
-  
-          begin
-          
-              wait(axi_arvalid && axi_arready);
-          
-              $display("[%0t] AXI AR HANDSHAKE", $time);
-              $display("  ID     = 0x%0h", axi_arid);
-              $display("  ADDR   = 0x%08h", axi_araddr);
-              $display("  LEN    = %0d", axi_arlen);
-              $display("  SIZE   = %0d", axi_arsize);
-              $display("  BURST  = %03b", axi_arburst);
-          
-          
-              check(axi_araddr == 32'h00007000,
-                    "Read-error AXI ARADDR");
-          
-          
-              // Return AXI SLVERR read response
-          
-              axi_rvalid <= 1'b1;
-              axi_rdata  <= 32'hbad00001;
-              axi_rresp  <= 2'b10;
-              axi_rlast  <= 1'b1;
-              axi_rid    <= axi_arid;
-          
-          
-              wait(axi_rready);
-          
-          
-              $display("[%0t] AXI R HANDSHAKE", $time);
-              $display("  DATA = 0x%08h RRESP=%02b",
-                       axi_rdata,
-                       axi_rresp);
-          
-          
-              axi_rvalid <= 1'b0;
-          
-          
-          end
-        
-        
-          begin
-          
-              // AXI-Lite read requires address + expected data
-              axil_read(
-                  32'h00007000,
-                  32'hbad00001
-              );
-          
-          end
-        
-      join
-    
-    
-    
-      wait(axil_rvalid);
-    
-      $display("[%0t] AXI-Lite R HANDSHAKE RRESP=%02b DATA=0x%08h",
-               $time,
-               axil_rresp,
-               axil_rdata);
-    
-    
-      check(axil_rresp == 2'b10,
-            "AXI-Lite RRESP propagates SLVERR");
-    
-    
-      check(axil_rdata == 32'hbad00001,
-            "Read error test returned expected data");
-    
-    
-      $display("\n******** TEST 7 COMPLETE ********\n");
-    
-  endtask
-
-
-
-  // ==========================================================================
-  // TEST 8: BACKPRESSURE ON AXI B CHANNEL
-  //
-  // Verify bridge holds AXI-Lite B response until BREADY.
-  // ==========================================================================
-
-  task automatic test_b_backpressure;
-
-    bit aw_done;
-    bit w_done;
-    bit b_seen;
-    int timeout;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 8: B CHANNEL BACKPRESSURE");
-      $display("############################################################");
-
-      test_addr = 32'h0000_8000;
-      test_wdata = 32'h5555_AAAA;
-      test_strb = 4'b1111;
-
-      aw_done = 0;
-      w_done = 0;
-      b_seen = 0;
-
-      fork
-
-        begin : MASTER
-
-          @(negedge clk);
-
-          s_axi_req.aw.addr  <= test_addr;
-          s_axi_req.aw.prot  <= 3'b000;
-          s_axi_req.aw_valid <= 1'b1;
-
-          s_axi_req.w.data   <= test_wdata;
-          s_axi_req.w.strb   <= test_strb;
-          s_axi_req.w_valid  <= 1'b1;
-
-          while (!(aw_done && w_done)) begin
-
-            @(posedge clk);
-
-            if (!aw_done && s_axi_req.aw_valid && s_axi_rsp.aw_ready) begin
-
-              aw_done = 1;
-
-              @(negedge clk);
-              s_axi_req.aw_valid <= 1'b0;
-            end
-
-            if (!w_done && s_axi_req.w_valid && s_axi_rsp.w_ready) begin
-
-              w_done = 1;
-
-              @(negedge clk);
-              s_axi_req.w_valid <= 1'b0;
-            end
-
-          end
-
-          // Keep BREADY low deliberately.
-          @(negedge clk);
-          s_axi_req.b_ready <= 1'b0;
-
-          // Wait until DUT produces BVALID.
-          timeout = 0;
-
-          while (!s_axi_rsp.b_valid) begin
-
-            @(posedge clk);
-
-            timeout++;
-
-            if (timeout > 100) begin
-              $error("[%0t] B backpressure timeout waiting for BVALID", $time);
-              errors++;
-              break;
-            end
-
-          end
-
-          if (s_axi_rsp.b_valid) begin
-
-            $display("[%0t] AXI-Lite BVALID observed while BREADY=0", $time);
-
-            check(s_axi_rsp.b.resp == 2'b00, "B response is OKAY during backpressure");
-          end
-
-          // Hold BREADY low for three cycles.
-          repeat (3) @(posedge clk);
-
-          check(s_axi_rsp.b_valid == 1'b1, "BVALID remains asserted while BREADY=0");
-
-          // Now accept response.
-          @(negedge clk);
-          s_axi_req.b_ready <= 1'b1;
-
-          @(posedge clk);
-
-          if (s_axi_rsp.b_valid && s_axi_req.b_ready) begin
-
-            b_seen = 1;
-
-            $display("[%0t] B HANDSHAKE after backpressure", $time);
-
-          end
-
-          @(negedge clk);
-          s_axi_req.b_ready <= 1'b0;
-
-        end
-
-
-        begin : SLAVE
-
-          axi_write_slave(test_addr, test_wdata, test_strb, 2'b00);
-
-        end
-
-      join
-
-      check(b_seen, "B response eventually accepted after backpressure");
-
-      $display("");
-      $display("******** TEST 8 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // TEST 9: BACKPRESSURE ON AXI R CHANNEL
-  // ==========================================================================
-
-  task automatic test_r_backpressure;
-
-    logic [DATA_WIDTH-1:0] read_data;
-
-    begin
-
-      $display("");
-      $display("############################################################");
-      $display("# TEST 9: R CHANNEL BACKPRESSURE");
-      $display("############################################################");
-
-      test_addr      = 32'h0000_9000;
-      expected_rdata = 32'hFACE_CAFE;
-
-      // The normal axil_read task asserts RREADY as soon as AR completes.
-      // For this test we simply exercise the bridge's ability to hold
-      // RVALID until AXI-Lite RREADY is asserted.
-
-      fork
-
-        begin : MASTER
-
-          bit ar_done;
-          bit r_done;
-          int timeout;
-
-          ar_done = 0;
-          r_done  = 0;
-
-          @(negedge clk);
-
-          s_axi_req.ar.addr  <= test_addr;
-          s_axi_req.ar.prot  <= 3'b000;
-          s_axi_req.ar_valid <= 1'b1;
-
-          while (!ar_done) begin
-
-            @(posedge clk);
-
-            if (s_axi_req.ar_valid && s_axi_rsp.ar_ready) begin
-
-              ar_done = 1;
-
-              $display("[%0t] AXI-Lite AR HANDSHAKE", $time);
-
-              @(negedge clk);
-              s_axi_req.ar_valid <= 1'b0;
-            end
-
-          end
-
-          // Deliberately hold RREADY low.
-          @(negedge clk);
-          s_axi_req.r_ready <= 1'b0;
-
-          timeout = 0;
-
-          while (!s_axi_rsp.r_valid) begin
-
-            @(posedge clk);
-
-            timeout++;
-
-            if (timeout > 100) begin
-              $error("[%0t] R backpressure timeout waiting for RVALID", $time);
-              errors++;
-              break;
-            end
-
-          end
-
-          if (s_axi_rsp.r_valid) begin
-
-            $display("[%0t] AXI-Lite RVALID observed while RREADY=0 DATA=0x%08h", $time,
-                     s_axi_rsp.r.data);
-
-            check(s_axi_rsp.r.data == expected_rdata, "RDATA remains stable during backpressure");
-
-            check(s_axi_rsp.r.resp == 2'b00, "RRESP remains OKAY during backpressure");
-          end
-
-          repeat (3) @(posedge clk);
-
-          check(s_axi_rsp.r_valid == 1'b1, "RVALID remains asserted while RREADY=0");
-
-          @(negedge clk);
-          s_axi_req.r_ready <= 1'b1;
-
-          @(posedge clk);
-
-          if (s_axi_rsp.r_valid && s_axi_req.r_ready) begin
-
-            r_done = 1;
-
-            $display("[%0t] AXI-Lite R HANDSHAKE after backpressure", $time);
-
-          end
-
-          @(negedge clk);
-          s_axi_req.r_ready <= 1'b0;
-
-          check(r_done, "R response eventually accepted after backpressure");
-
-        end
-
-
-        begin : SLAVE
-
-          axi_read_slave(test_addr, expected_rdata, 2'b00);
-
-        end
-
-      join
-
-      $display("");
-      $display("******** TEST 9 COMPLETE ********");
-
-    end
-
-  endtask
-
-
-  // ==========================================================================
-  // MAIN TEST
-  // ==========================================================================
-
-  initial begin
-
-    $display("");
-    $display("==================================================================");
-    $display("       AXI-LITE TO AXI BRIDGE VERIFICATION");
-    $display("==================================================================");
-    $display("");
-    $display("DUT : adn_axi_axil_to_axi");
-    $display("ID_WIDTH   = %0d", ID_WIDTH);
-    $display("ADDR_WIDTH = %0d", ADDR_WIDTH);
-    $display("DATA_WIDTH = %0d", DATA_WIDTH);
-    $display("USER_WIDTH = %0d", USER_WIDTH);
-    $display("");
-
-
-    // --------------------------------------------------------------
-    // Wait for reset.
-    // --------------------------------------------------------------
-
-    wait (aresetn == 1'b1);
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 1
-    // --------------------------------------------------------------
-
-    test_normal_write();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 2
-    // --------------------------------------------------------------
-
-    test_normal_read();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 3
-    // --------------------------------------------------------------
-
-    test_w_before_aw();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 4
-    // --------------------------------------------------------------
-
-    test_aw_before_w();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 5
-    // --------------------------------------------------------------
-
-    test_partial_write();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 6
-    // --------------------------------------------------------------
-
-    test_write_error();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 7
-    // --------------------------------------------------------------
-
-    test_read_error();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 8
-    // --------------------------------------------------------------
-
-    test_b_backpressure();
-
-    repeat (2) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // TEST 9
-    // --------------------------------------------------------------
-
-    test_r_backpressure();
-
-    repeat (3) @(posedge clk);
-
-
-    // --------------------------------------------------------------
-    // FINAL RESULT
-    // --------------------------------------------------------------
-
-    $display("");
-    $display("==================================================================");
-
-    if (errors == 0) begin
-
-      $display("                    ALL TESTS PASSED");
-      $display("==================================================================");
-      $display("");
-
-    end else begin
-
-      $display("                    TEST FAILED");
-      $display("                    ERRORS = %0d", errors);
-      $display("==================================================================");
-      $display("");
-
-    end
+    wait_cycles(5);
 
     $finish;
 
-  end
+end
 
 
-  // ==========================================================================
-  // GLOBAL TIMEOUT
-  // ==========================================================================
+// ------------------------------------------------------------
+// Global Simulation Timeout
+// ------------------------------------------------------------
 
-  initial begin
+initial begin
+    #(CLK_PERIOD * 2000);
 
-    #50_000;
-
-    $error("");
-    $error("==================================================================");
-    $error("                    GLOBAL TESTBENCH TIMEOUT");
-    $error("==================================================================");
-
-    $finish;
-
-  end
-
-
-  // ==========================================================================
-  // WAVEFORM
-  // ==========================================================================
-
-  initial begin
-
-    $dumpfile("tb_axi_lite_to_axi.vcd");
-    $dumpvars(0, tb_axi_lite_to_axi);
-
-  end
+    $fatal(
+        1,
+        "Simulation timeout: possible DUT deadlock"
+    );
+end
 
 endmodule
