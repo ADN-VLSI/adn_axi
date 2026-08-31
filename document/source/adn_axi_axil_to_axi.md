@@ -6,31 +6,32 @@
 
 <img src="./adn_axi_axil_to_axi_top.svg">
 
+<img src="./adn_axi_axil_to_axi_des.svg">
+
 ## Parameters
 
 |Name|Type|Dimension|Default|Description|
 |-|-|-|-|-|
-|ID_WIDTH|int unsigned||4||
-|ADDR_WIDTH|int unsigned||32||
-|DATA_WIDTH|int unsigned||32||
-|USER_WIDTH|int unsigned||1||
-|AXI_AWID|logic [ID_WIDTH-1:0]||'0||
-|AXI_ARID|logic [ID_WIDTH-1:0]||'0||
-|AXI_CACHE|logic [3:0]||4'b0000||
-|AXI_QOS|logic [3:0]||4'b0000||
-|AXI_REGION|logic [3:0]||4'b0000||
+|ADDR_WIDTH|int||32||
+|DATA_WIDTH|int||32||
+|ID_WIDTH|int||4||
+|USER_WIDTH|int||1||
+|axil_req_t|type||logic||
+|axil_rsp_t|type||logic||
+|axi_req_t|type||logic||
+|axi_rsp_t|type||logic||
 
 
 ## Ports
 
 |Name|Direction|Type|Dimension|Description|
 |-|-|-|-|-|
-|clk|interface||||
-|aresetn|interface||||
-|s_axi_req|interface||||
-|s_axi_rsp|interface||||
-|m_axi_req|interface||||
-|m_axi_rsp|interface||||
+|clk_i|input|logic|||
+|rst_ni|input|logic|||
+|s_req_i|input|axil_req_t||AXI4-Lite Slave Interface|
+|s_rsp_o|output|axil_rsp_t|||
+|m_req_o|output|axi_req_t||AXI4 Master Interface|
+|m_rsp_i|input|axi_rsp_t|||
 
 
 ## Description

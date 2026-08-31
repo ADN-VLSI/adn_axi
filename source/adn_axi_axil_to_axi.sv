@@ -1,82 +1,28 @@
-// /*
+/*
 
-// @foez---bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+@foez-bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
 
-// @foez---bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+@foez-bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
 
-// | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
-// |----------|------------|-----------------|--------------------------------------------------------|
-// | 0.1      | 2026-08-27 | Md. Sakib Hasan Shawon | Initial version                                        |
-// | 1.0      | 2026-08-27 | Md. Sakib Hasan Shawon | Stable release                                         |
+| REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
+|----------|------------|-----------------|--------------------------------------------------------|
+| 0.1      | 2026-08-27 | Md. Sakib Hasan Shawon | Initial version                                        |
+| 1.0      | 2026-08-27 | Md. Sakib Hasan Shawon | Stable release                                         |
 
-// Author : Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)
-// This file is part of ADN-VLSI/adn_axi
-// Copyright (c) 2026 ADN Semiconductors
-// Licensed under the MIT License
-// See LICENSE file in the project root for full license information
+Author : Md. Sakib Hasan Shawon (mdsakibhasanshawon20@gmail.com)
+This file is part of ADN-VLSI/adn_axi
+Copyright (c) 2026 ADN Semiconductors
+Licensed under the MIT License
+See LICENSE file in the project root for full license information
 
-// */
+*/
 
-// // @foez---bhai, add comments to the parameters, ports
-// // module adn_axi_axil_to_axi #(
-// //     // PARAMETERS
-// //     // LOCALPARAMS
-// // ) (
-// //     // PORTS
-// // );
-
-// //   // @foez---bhai, add comments to the functional blocks, signals, and submodules
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // LOCALPARAMS GENERATED
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // TYPEDEFS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // SIGNALS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // ASSIGNMENTS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // SUBMODULES
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // SEQUENTIALS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // INITIAL CHECKS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // METHODS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-// //   // INITIAL CHECKS
-// //   //////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-// // endmodule
-
-
-
-
-
-
-
-
-
-
+// @foez-bhai, add comments to the parameters, ports
 module adn_axi_axil_to_axi #(
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    // PARAMETERS
+    ////////////////////////////////////////////////////////////////////////////////////////////
     parameter int ADDR_WIDTH = 32,
     parameter int DATA_WIDTH = 32,
     parameter int ID_WIDTH   = 4,
@@ -99,6 +45,7 @@ module adn_axi_axil_to_axi #(
     input  axi_rsp_t m_rsp_i
 );
 
+  // @foez-bhai, add comments to the functional blocks, signals, and submodules
 
   // ------------------------------------------------------------
   // Local Parameters
@@ -108,7 +55,6 @@ module adn_axi_axil_to_axi #(
   localparam int SIZE_WIDTH = $clog2(DATA_BYTES);
 
   localparam logic [2:0] AXI_BURST_INCR = 3'b001;
-
 
   // ------------------------------------------------------------
   // AXI-Lite Write Buffers
