@@ -1,8 +1,8 @@
 /*
 
-@foez---bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+@foez-bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
 
-@foez---bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+@foez-bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
@@ -54,8 +54,7 @@ See LICENSE file in the project root for full license information
 //     A mirrored AR/R AGU would be needed for read bursts.
 // =============================================================================
 
-`include "axi/typedef.svh"
-`include "axil/typedef.svh"
+
 
 module adn_axi_agu_burst_splitter #(
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +84,8 @@ module adn_axi_agu_burst_splitter #(
     output axil_req_t               axil_req_o,
     input  axil_rsp_t                axil_rsp_i
 );
+
+  // @foez-bhai, add comments to the functional blocks, signals, and submodules
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // LOCALPARAMS
