@@ -36,9 +36,13 @@
 
 ## Description
 
-@foez---bhai, write the purpose of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+This module implements an Address Generation Unit (AGU) that decomposes AXI4 burst transactions into a series of individual AXI4-Lite write transactions. It handles address calculation for FIXED, INCR, and WRAP burst types and manages the handshake synchronization between the AXI4 burst interface and the AXI4-Lite beat-by-beat interface.
 
-@foez---bhai, describe the use case of this module in markdown format here. This is already in multi-line comment, so don't add any additional comment syntax.
+### Use Case
+The `adn_axi_agu_burst_splitter` is designed to bridge high-performance AXI4 burst-capable masters with simpler AXI4-Lite peripherals. Its primary use cases include:
+- **Protocol Conversion:** Enabling AXI4 masters to communicate with AXI4-Lite slaves that do not support burst transactions.
+- **System Integration:** Simplifying the design of peripherals by offloading the complexity of burst address calculation (including wrapping logic) to a dedicated hardware block.
+- **Resource Optimization:** Providing a compact, shared-datapath implementation of address generation that handles multiple burst types (FIXED, INCR, WRAP) without requiring redundant hardware logic.
 
 | REVISION | DATE       | AUTHOR          | DESCRIPTION                                            |
 |----------|------------|-----------------|--------------------------------------------------------|
